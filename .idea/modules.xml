@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/gira.jvmTest.iml" filepath="$PROJECT_DIR$/.idea/modules/gira.jvmTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/kapture.iml" filepath="$PROJECT_DIR$/.idea/kapture.iml" />
     </modules>
   </component>
 </project>

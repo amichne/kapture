@@ -7,7 +7,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.kotlinGradlePlugin)
+//    implementation()
 }
 
 repositories {
