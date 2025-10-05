@@ -1,4 +1,4 @@
-rootProject.name = "gira"
+rootProject.name = "kapture"
 
 // Include a single module that produces a native executable.  In a full
 // multiplatform setup you might split this into separate modules, but for
