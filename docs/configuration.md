@@ -6,11 +6,11 @@ The `branchPattern` in your Kapture config controls how branch names are validat
 
 ```json
 {
-  "branchPattern": "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$"
+  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$"
 }
 ```
 
-This pattern expects branches in the format: `TICKET-123/description`
+This pattern expects branches in the format: `TASK-123/description`
 
 ### Status Rules
 
@@ -82,7 +82,7 @@ java -jar cli/build/libs/kapture.jar status
 ```bash
 #!/usr/bin/env bash
 export REAL_GIT="/usr/bin/git"      # replace with the path from step 1
-exec java -jar /usr/local/lib/kapture/kapture.jar "$@"
+command java -jar /usr/local/lib/kapture/kapture.jar "$@"
 ```
 
 Save it as `~/bin/git`, mark executable (`chmod +x ~/bin/git`), and ensure `~/bin` precedes the system Git directory
@@ -108,7 +108,7 @@ gu install native-image
 The binary lands at `cli/build/native/nativeCompile/kapture` (or `kapture.exe` on Windows).
 
 3. Drop the binary onto your `PATH` (e.g. `/usr/local/bin/kapture`) and reuse the shim listed above, swapping the
-   `java -jar …` invocation for the native binary path.
+   `java -jar …` commandInvocation for the native binary path.
 
 ## Usage
 
@@ -127,7 +127,7 @@ The binary lands at `cli/build/native/nativeCompile/kapture` (or `kapture.exe` o
     "type": "rest",
     "baseUrl": "https://your-jira.example.com/rest/api/3",
     "auth": {
-      "type": "jira_pat",
+      "type": "pat",
       "email": "you@example.com",
       "token": "<pat>"
     }
@@ -154,7 +154,7 @@ The binary lands at `cli/build/native/nativeCompile/kapture` (or `kapture.exe` o
 
 - Set `REAL_GIT` when the automatic resolver cannot find the real binary (WSL, custom installations, CI).
 - Use `--version`, `--help`, completion flags, and `git config` unaffected; the wrapper fast-paths these commands.
-- Network calls to your ticket system honour `trackingEnabled = false`; no session data is written in that mode.
+- Network calls to your task system honour `trackingEnabled = false`; no session data is written in that mode.
 
 ## Documentation Map
 

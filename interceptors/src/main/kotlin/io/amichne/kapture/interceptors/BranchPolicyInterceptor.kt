@@ -1,70 +1,71 @@
 package io.amichne.kapture.interceptors
 
-import io.amichne.kapture.core.config.Config
+import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.git.BranchUtils
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.model.Invocation
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Enforcement
 
 class BranchPolicyInterceptor : GitInterceptor {
     /**
      * Ensures newly created branches conform to the configured naming policy
-     * and optionally validates that the associated ticket exists before Git
+     * and optionally validates that the associated task exists before Git
      * proceeds.
      */
     override fun before(
-        invocation: Invocation,
+        commandInvocation: CommandInvocation,
         config: Config,
         client: ExternalClient<*>
     ): Int? {
         val mode = config.enforcement.branchPolicy
-        if (mode == Config.Enforcement.Mode.OFF) return null
+        if (mode == Enforcement.Mode.OFF) return null
 
-        val newBranch = extractCreatedBranch(invocation) ?: return null
-        val ticket = BranchUtils.extractTicket(newBranch, config.branchPattern)
-        if (ticket == null) {
+        val newBranch = extractCreatedBranch(commandInvocation) ?: return null
+        val task = BranchUtils.extractTask(newBranch, config.branchPattern)
+        if (task == null) {
             return handleViolation(
                 mode,
                 "Branch '$newBranch' does not match pattern ${config.branchPattern}"
             )
         }
 
-        return when (val result = client.getTicketStatus(ticket)) {
-            is TicketLookupResult.Found -> null
-            TicketLookupResult.NotFound -> handleViolation(
+        return when (val result = client.getTaskStatus(task)) {
+            is TaskSearchResult.Found -> null
+            TaskSearchResult.NotFound -> handleViolation(
                 mode,
-                "No ticket found for $ticket; verify before creating branch"
+                "No task found for $task; verify before creating branch"
             )
 
-            is TicketLookupResult.Error -> handleViolation(
+            is TaskSearchResult.Error -> handleViolation(
                 mode,
-                "Ticket lookup failed for $ticket (${result.message}); proceeding cautiously"
+                "Task lookup failed for $task (${result.message}); proceeding cautiously"
             )
         }
     }
 
     private fun handleViolation(
-        mode: Config.Enforcement.Mode,
+        mode: Enforcement.Mode,
         message: String
     ): Int? {
         when (mode) {
-            Config.Enforcement.Mode.WARN -> {
+            Enforcement.Mode.WARN -> {
                 System.err.println("[kapture] WARN: $message")
                 return null
             }
 
-            Config.Enforcement.Mode.BLOCK -> {
+            Enforcement.Mode.BLOCK -> {
                 System.err.println("[kapture] ERROR: $message")
                 return BRANCH_POLICY_EXIT_CODE
             }
 
-            Config.Enforcement.Mode.OFF -> return null
+            Enforcement.Mode.OFF -> return null
         }
     }
 
-    private fun extractCreatedBranch(invocation: Invocation): String? {
-        val args = invocation.args
-        return when (invocation.command?.lowercase()) {
+    private fun extractCreatedBranch(commandInvocation: CommandInvocation): String? {
+        val args = commandInvocation.args
+        return when (commandInvocation.command?.lowercase()) {
             "checkout" -> parseSingleFlagVariant(args, setOf("-b", "-B"))
             "switch" -> parseSingleFlagVariant(args, setOf("-c", "--create"))
             "branch" -> parseBranchCopy(args)

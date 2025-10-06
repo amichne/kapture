@@ -33,7 +33,7 @@ image).
 2. `Config.load()` resolves the config file using this precedence:
   1. explicit path passed to `load`
   2. `KAPTURE_CONFIG` environment variable
-  3. `${KAPTURE_LOCAL_STATE}/config.json` (defaults to `~/.kapture/state/config.json`)
+  3. `${KAPTURE_ROOT}/config.json` (defaults to `~/.kapture/state/config.json`)
      If no config exists, defaults are used and the state directory is created.
 3. `RealGitResolver.resolve` enumerates candidates from `REAL_GIT`, the config hint, `$PATH`, and well-known fallbacks.
    It avoids returning the wrapper artefact itself to stop infinite recursion.
@@ -55,7 +55,7 @@ image).
 
 `ExternalClient` exposes two operations regardless of backend:
 
-- `getTicketStatus(ticketId)` – queries the configured integration (REST endpoint or `jira-cli issue view`) and returns
+- `getTaskStatus(taskId)` – queries the configured integration (REST endpoint or `jira-cli task view`) and returns
   a status string for `StatusGateInterceptor`.
 - `trackSession(snapshot)` – forwards telemetry when supported. REST integrations POST to `/sessions/track`, while the
   Jira CLI backend currently no-ops and logs when debug mode is enabled.
@@ -67,14 +67,14 @@ even when dependencies are unavailable.
 
 Key settings from `Config`:
 
-- `branchPattern` – regex with a named capture `ticket` that extracts the ticket identifier from branch names.
+- `branchPattern` – regex with a named capture `task` that extracts the task identifier from branch names.
 - `external` – integration descriptor (`rest` with base URL/auth or `jiraCli` with executable/env overrides).
 - `enforcement.branchPolicy` / `.statusCheck` – `WARN`, `BLOCK`, or `OFF` mode per interceptor.
-- `statusRules` – allowed ticket statuses for commit/push operations.
+- `statusRules` – allowed task statuses for commit/push operations.
 - `trackingEnabled` – disables session tracking when `false`.
 - `sessionTrackingIntervalMs` – minimum interval between session snapshots.
 - `realGitHint` – preferred path for the actual Git binary.
-- `ticketSystem` – string flag for client-side specialisation (currently informational).
+- `taskSystem` – string flag for client-side specialisation (currently informational).
 
 The defaults are serialised with `encodeDefaults = true`, meaning a generated config file contains every key to simplify
 bootstrap.

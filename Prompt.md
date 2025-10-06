@@ -5,8 +5,8 @@
 Build a JVM-based Git CLI wrapper that:
 
 - Proxies all Git commands with identical UX (autocomplete, interactive flows)
-- Intercepts specific verbs for branch policy, ticket validation, and **session-based time tracking**
-- Initially supports **Jira** ticket integration; future extensibility for **GitHub Issues**, **Trello**, and other
+- Intercepts specific verbs for branch policy, task validation, and **session-based time tracking**
+- Initially supports **Jira** task integration; future extensibility for **GitHub Tasks**, **Trello**, and other
   systems is planned
 - Maintains zero-copy passthrough for completion/help commands
 - Single JAR distribution with minimal runtime overhead
@@ -89,7 +89,7 @@ Priority order:
 **Location priority**:
 
 1. `KAPTURE_CONFIG` env → absolute path
-2. `${config.localStateRoot}/config.json`
+2. `${config.root}/config.json`
 3. Embedded defaults
 
 ```kotlin
@@ -97,14 +97,14 @@ Priority order:
 data class Config(
     val externalBaseUrl: String = "http://localhost:8080",
     val apiKey: String? = null,
-    val branchPattern: String = "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+    val branchPattern: String = "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
     val enforcement: Enforcement = Enforcement(),
     val statusRules: StatusRules = StatusRules(),
     val trackingEnabled: Boolean = true,
     val realGitHint: String? = null,
     val sessionTrackingIntervalMs: Long = 300_000,  // 5 minutes default
-    val ticketSystem: String = "jira", // reserved for future support: github, trello, etc.
-    val localStateRoot: String = System.getenv("KAPTURE_LOCAL_STATE") ?: "${
+    val taskSystem: String = "jira", // reserved for future support: github, trello, etc.
+    val root: String = System.getenv("KAPTURE_ROOT") ?: "${
         System.getProperty(
             "user.home"
         )
@@ -147,11 +147,11 @@ fun main(args: Array<String>) {
         exitProcess(Exec.passthrough(listOf(realGit) + args))
     }
 
-    val invocation = Invocation(args, realGit)
+    val commandInvocation = Invocation(args, realGit)
 
     // Before hooks
     Registry.interceptors.forEach { interceptor ->
-        interceptor.before(invocation, config, client)?.let { exitCode ->
+        interceptor.before(commandInvocation, config, client)?.let { exitCode ->
             exitProcess(exitCode)
         }
     }
@@ -161,7 +161,7 @@ fun main(args: Array<String>) {
 
     // After hooks
     Registry.interceptors.forEach { interceptor ->
-        interceptor.after(invocation, exitCode, config, client)
+        interceptor.after(commandInvocation, exitCode, config, client)
     }
 
     exitProcess(exitCode)
@@ -170,7 +170,7 @@ fun main(args: Array<String>) {
 fun isCompletionOrHelp(args: Array<String>): Boolean {
     val first = args.firstOrNull()?.lowercase()
     return args.any { it.contains("--list-cmds") } ||
-           first in setOf("help", "--version", "--exec-path", "config", "for-each-ref")
+           first in setOf("help", "--version", "--command-path", "config", "for-each-ref")
 }
 ```
 
@@ -186,9 +186,9 @@ fun isCompletionOrHelp(args: Array<String>): Boolean {
 
 1. Extract new branch name from args
 2. Validate against `branchPattern` regex
-3. Extract ticket ID from branch name
-4. Query `GET /tickets/{id}/status` (currently via Jira; abstracted for future systems)
-5. If ticket missing:
+3. Extract task ID from branch name
+4. Query `GET /tasks/{id}/status` (currently via Jira; abstracted for future systems)
+5. If task missing:
 
 - `WARN`: Print to stderr, continue
 - `BLOCK`: Exit code 2
@@ -200,8 +200,8 @@ fun isCompletionOrHelp(args: Array<String>): Boolean {
 **Logic**:
 
 1. Capture current branch: `git rev-parse --abbrev-ref HEAD`
-2. Extract ticket ID from branch name
-3. Query `GET /tickets/{id}/status` (currently via Jira; abstracted for future systems)
+2. Extract task ID from branch name
+3. Query `GET /tasks/{id}/status` (currently via Jira; abstracted for future systems)
 4. Compare status against `statusRules.allowCommitWhen` or `allowPushWhen`
 5. If invalid:
 
@@ -210,7 +210,7 @@ fun isCompletionOrHelp(args: Array<String>): Boolean {
 
 ### 3. Session Time Tracking
 
-**Purpose**: Track developer time spent on branches/tickets for effort estimation
+**Purpose**: Track developer time spent on branches/tasks for effort estimation
 
 **Triggers**: All Git commands (records session activity)
 
@@ -220,7 +220,7 @@ fun isCompletionOrHelp(args: Array<String>): Boolean {
 @Serializable
 data class TimeSession(
     val branch: String,
-    val ticket: String?,
+    val task: String?,
     val startTime: Instant,
     val lastActivityTime: Instant
 )
@@ -231,8 +231,8 @@ data class TimeSession(
 **On ANY Git command execution** (in `after()` hook):
 
 1. Get current branch: `git rev-parse --abbrev-ref HEAD`
-2. Extract ticket ID from branch name (if pattern matches)
-3. Load active session from local state file (`${config.localStateRoot}/session.json`)
+2. Extract task ID from branch name (if pattern matches)
+3. Load active session from local state file (`${config.root}/session.json`)
 4. **Session continuity check**:
 
 - If no active session OR branch changed → **Start new session**
@@ -247,7 +247,7 @@ data class TimeSession(
    ```json
    {
   "branch": "PROJ-123/feature",
-  "ticket": "PROJ-123",
+  "task": "PROJ-123",
   "startTime": "2025-10-05T10:00:00Z",
   "endTime": "2025-10-05T11:30:00Z",
   "durationMs": 5400000
@@ -258,10 +258,10 @@ data class TimeSession(
 
 **State persistence**:
 
-- Local file: `${config.localStateRoot}/session.json`
+- Local file: `${config.root}/session.json`
 - Contains only current active session
 - Atomic writes to prevent corruption
-- All local data is stored under `${KAPTURE_LOCAL_STATE}` (default `$HOME/.kapture/state`)
+- All local data is stored under `${KAPTURE_ROOT}` (default `$HOME/.kapture/state`)
 
 **Fire-and-forget**: HTTP POST failures are logged but never block Git operations.
 
@@ -295,7 +295,7 @@ if (apiKey != null) {
 }
 ```
 
-**Error handling**: Treat non-2xx as "ticket not found". Never block passthrough unless policy is `BLOCK`.
+**Error handling**: Treat non-2xx as "task not found". Never block passthrough unless policy is `BLOCK`.
 
 ---
 
@@ -363,7 +363,7 @@ This is recommended for CI and developer installations. The JVM JAR remains supp
 
 ### Unit Tests
 
-- Regex extraction for ticket IDs
+- Regex extraction for task IDs
 - Config loading precedence
 - Interceptor mode logic (WARN/BLOCK/OFF)
 - Session timeout logic
@@ -399,8 +399,8 @@ This is recommended for CI and developer installations. The JVM JAR remains supp
 
 - `KAPTURE_DEBUG=1` → print interceptor decisions to stderr
 - Default: silent unless WARN/BLOCK triggered
-- Session tracking failures logged to `${config.localStateRoot}/tracking.log` (optional)
-- All local data is stored under `${KAPTURE_LOCAL_STATE}` (default `$HOME/.kapture/state`)
+- Session tracking failures logged to `${config.root}/tracking.log` (optional)
+- All local data is stored under `${KAPTURE_ROOT}` (default `$HOME/.kapture/state`)
 
 ---
 
@@ -424,14 +424,14 @@ This is recommended for CI and developer installations. The JVM JAR remains supp
 
 1. **JVM overhead acceptable?** → Yes. Modern JVMs start fast enough for CLI use (~100ms).
 2. **Native launcher needed?** → No. Shell script wrapper is sufficient.
-3. **Ticket ID extraction from branch?** → Named capture group in regex: `(?<ticket>[A-Z]+-\d+)`.
-4. **Missing ticket HTTP call?** → Fire request, treat 404 as missing, respect enforcement mode.
-5. **Time tracking failures?** → Silent. Never block Git operations due to telemetry issues.
+3. **Task ID extraction from branch?** → Named capture group in regex: `(?<task>[A-Z]+-\d+)`.
+4. **Missing task HTTP call?** → Fire request, treat 404 as missing, respect enforcement mode.
+5. **Time tracking failures?** → Silent. Never block Git operations due to telemetry tasks.
 6. **Session timeout duration?** → Configurable via `sessionTrackingIntervalMs` (default 5 minutes).
-7. **Session state persistence?** → Local JSON file (`${config.localStateRoot}/session.json`) with atomic writes.
+7. **Session state persistence?** → Local JSON file (`${config.root}/session.json`) with atomic writes.
 8. **Multiple repos in same session?** → Each repo has independent session tracking (state file is global but branch
    name includes repo context).
-9. **Ticket system support?** → Starts with Jira. Interface designed for multi-system compatibility (GitHub Issues,
+9. **Task system support?** → Starts with Jira. Interface designed for multi-system compatibility (GitHub Tasks,
    Trello, etc.).
 
 ---

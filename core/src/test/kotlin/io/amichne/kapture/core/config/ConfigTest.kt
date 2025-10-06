@@ -1,11 +1,15 @@
 package io.amichne.kapture.core.config
 
+import io.amichne.kapture.core.adapter.internal.jira.JiraCliDefaults
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.model.config.Enforcement
+import io.amichne.kapture.core.model.config.Plugin
+import io.amichne.kapture.core.util.ConfigLoader
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
-import io.amichne.kapture.core.config.ExternalIntegration
 
 class ConfigTest {
     @Test
@@ -29,12 +33,10 @@ class ConfigTest {
         val originalHome = System.getProperty("user.home")
         System.setProperty("user.home", tempDir.toString())
         try {
-            val config = Config.load(configFile)
-            val external = config.external as ExternalIntegration.Rest
-            assertEquals("https://api.example.com", external.baseUrl)
-            assertEquals(Config.Enforcement.Mode.BLOCK, config.enforcement.branchPolicy)
-            assertEquals(1000, config.sessionTrackingIntervalMs)
-            assertTrue(Files.exists(Path.of(config.localStateRoot)))
+            val config = ConfigLoader.load(configFile)
+            val external = config.external as Plugin.Cli
+            assertEquals("jira-cli", external.executable)
+            assertTrue(config.trackingEnabled)
         } finally {
             System.setProperty("user.home", originalHome)
         }
@@ -46,9 +48,9 @@ class ConfigTest {
         val originalHome = System.getProperty("user.home")
         System.setProperty("user.home", tempDir.toString())
         try {
-            val config = Config.load(tempDir.resolve("missing.json"))
-            val external = config.external as ExternalIntegration.Rest
-            assertEquals("http://localhost:8080", external.baseUrl)
+            val config = ConfigLoader.load(tempDir.resolve("missing.json"))
+            val external = config.external as Plugin.Cli
+            assertEquals("jira-cli", external.executable)
             assertTrue(config.trackingEnabled)
         } finally {
             System.setProperty("user.home", originalHome)

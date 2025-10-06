@@ -25,7 +25,7 @@ dependency injection via constructor parameters.
 
 ## Testing Guidelines
 
-Write Kotlin test suites with JUnit 5 (`kotlin("test")`). Cover regex ticket extraction, config precedence, interceptor
+Write Kotlin test suites with JUnit 5 (`kotlin("test")`). Cover regex task extraction, config precedence, interceptor
 WARN/BLOCK/OFF behaviour, and session timeout transitions. For integration tests, spin up temporary Git repositories and
 a mock HTTP server to validate exit codes and Jira interactions. Name tests using backticked strings that describe
 behaviour (`"blocks push when status disallowed"`). Run `./gradlew test` before every PR and ensure new features include
@@ -34,13 +34,13 @@ regression coverage.
 ## Commit & Pull Request Guidelines
 
 Commits should be short, imperative sentences (`Add session tracker persistence`). Group related changes and avoid
-mixing refactors with features. PRs need: a concise summary, linked issue or Jira ticket, testing notes (
+mixing refactors with features. PRs need: a concise summary, linked task or Jira task, testing notes (
 `./gradlew test`), and screenshots or logs when touching user-facing output. Call out configuration or migration steps
-explicitly. Ask for focused reviews on security-sensitive paths (ticket validation, session file handling).
+explicitly. Ask for focused reviews on security-sensitive paths (task validation, session file handling).
 
 ## Security & Configuration Tips
 
 Respect user environments: always forward `GIT_*`, `PAGER`, `LESS`, `EDITOR`, `VISUAL`, `SSH_ASKPASS`, and `GPG_TTY`.
 Never log credentials or full command strings; redact API keys in debug output. Honour `trackingEnabled = false` to skip
-time tracking writes, and store session data only under `${KAPTURE_LOCAL_STATE}/state`. Validate `REAL_GIT` resolution
+time tracking writes, and store session data only under `${KAPTURE_ROOT}/state`. Validate `REAL_GIT` resolution
 to avoid recursion when the wrapper is symlinked as `git`.

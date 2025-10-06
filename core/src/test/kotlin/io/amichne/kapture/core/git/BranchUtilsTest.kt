@@ -6,20 +6,20 @@ import org.junit.jupiter.api.Test
 
 class BranchUtilsTest {
     @Test
-    fun `extract ticket using named group`() {
-        val ticket = BranchUtils.extractTicket(
+    fun `extract task using named group`() {
+        val task = BranchUtils.extractTask(
             branch = "PROJ-123/implement-feature",
-            pattern = "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$"
+            pattern = "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$"
         )
-        assertEquals("PROJ-123", ticket)
+        assertEquals("PROJ-123", task)
     }
 
     @Test
-    fun `extract ticket returns null when pattern mismatches`() {
-        val ticket = BranchUtils.extractTicket(
+    fun `extract task returns null when pattern mismatches`() {
+        val task = BranchUtils.extractTask(
             branch = "main",
-            pattern = "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$"
+            pattern = "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$"
         )
-        assertNull(ticket)
+        assertNull(task)
     }
 }

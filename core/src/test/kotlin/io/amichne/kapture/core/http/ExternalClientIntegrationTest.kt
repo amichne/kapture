@@ -1,8 +1,12 @@
 package io.amichne.kapture.core.http
 
-import io.amichne.kapture.core.config.AuthConfig
-import io.amichne.kapture.core.config.ExternalIntegration
-import io.amichne.kapture.core.model.SessionSnapshot
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.config.Integration
+import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Plugin
+import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
+import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.TaskSearchResult
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -15,24 +19,24 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient from Rest integration creates working client`() {
-        val integration = ExternalIntegration.Rest(
+        val integration = Plugin.Http(
             baseUrl = "https://api.example.com",
-            auth = AuthConfig.None
+            auth = Authentication.None
         )
 
         val client = ExternalClient.from(integration)
         assertNotNull(client)
 
-        // Verify it handles blank ticket IDs correctly
-        val result = client.getTicketStatus("")
-        assertEquals(TicketLookupResult.NotFound, result)
+        // Verify it handles blank task IDs correctly
+        val result = client.getTaskStatus("")
+        assertEquals(TaskSearchResult.NotFound, result)
 
         client.close()
     }
 
     @Test
     fun `ExternalClient from JiraCli integration creates working client`() {
-        val integration = ExternalIntegration.JiraCli(
+        val integration = Plugin.Cli(
             executable = "jira",
             environment = mapOf("JIRA_API_TOKEN" to "test"),
             timeoutSeconds = 30
@@ -41,24 +45,24 @@ class ExternalClientIntegrationTest {
         val client = ExternalClient.from(integration)
         assertNotNull(client)
 
-        // Verify it handles blank ticket IDs correctly
-        val result = client.getTicketStatus("")
-        assertEquals(TicketLookupResult.NotFound, result)
+        // Verify it handles blank task IDs correctly
+        val result = client.getTaskStatus("")
+        assertEquals(TaskSearchResult.NotFound, result)
 
         client.close()
     }
 
     @Test
     fun `ExternalClient can track sessions with Rest integration`() {
-        val integration = ExternalIntegration.Rest(
+        val integration = Plugin.Http(
             baseUrl = "https://api.example.com",
-            auth = AuthConfig.Bearer("test-token")
+            auth = Authentication.Bearer("test-token")
         )
 
         val client = ExternalClient.from(integration)
         val snapshot = SessionSnapshot(
             branch = "main",
-            ticket = null,
+            task = null,
             startTime = Instant.fromEpochMilliseconds(0),
             endTime = Instant.fromEpochMilliseconds(1000),
             durationMs = 1000
@@ -71,18 +75,18 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient can track sessions with JiraCli integration`() {
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira
 
-        val client = ExternalClient.from(integration)
+        val client = ExternalClient.from(integration.toPlugin())
         val snapshot = SessionSnapshot(
             branch = "TEST-123/feature",
-            ticket = "TEST-123",
+            task = "TEST-123",
             startTime = Instant.fromEpochMilliseconds(1000),
             endTime = Instant.fromEpochMilliseconds(2000),
             durationMs = 1000
         )
 
-        // Should not throw (JiraCli doesn't support tracking)
+        // Should not throw (Cli doesn't support tracking)
         client.trackSession(snapshot)
         client.close()
     }
@@ -90,22 +94,22 @@ class ExternalClientIntegrationTest {
     @Test
     fun `ExternalClient with custom adapter works correctly`() {
         val adapter = MockAdapter(
-            ticketResultProvider = { ticketId ->
+            taskResultProvider = { taskId ->
                 when {
-                    ticketId.isBlank() -> TicketLookupResult.NotFound
-                    ticketId.startsWith("VALID") -> TicketLookupResult.Found("IN_PROGRESS")
-                    ticketId.startsWith("DONE") -> TicketLookupResult.Found("DONE")
-                    else -> TicketLookupResult.Error("Unknown ticket")
+                    taskId.isBlank() -> TaskSearchResult.NotFound
+                    taskId.startsWith("VALID") -> TaskSearchResult.Found("IN_PROGRESS")
+                    taskId.startsWith("DONE") -> TaskSearchResult.Found("DONE")
+                    else -> TaskSearchResult.Error("Unknown task")
                 }
             }
         )
 
         val client = ExternalClient.wrap(adapter)
 
-        assertEquals(TicketLookupResult.NotFound, client.getTicketStatus(""))
-        assertEquals(TicketLookupResult.Found("IN_PROGRESS"), client.getTicketStatus("VALID-123"))
-        assertEquals(TicketLookupResult.Found("DONE"), client.getTicketStatus("DONE-456"))
-        assertEquals(TicketLookupResult.Error("Unknown ticket"), client.getTicketStatus("OTHER-789"))
+        assertEquals(TaskSearchResult.NotFound, client.getTaskStatus(""))
+        assertEquals(TaskSearchResult.Found("IN_PROGRESS"), client.getTaskStatus("VALID-123"))
+        assertEquals(TaskSearchResult.Found("DONE"), client.getTaskStatus("DONE-456"))
+        assertEquals(TaskSearchResult.Error("Unknown task"), client.getTaskStatus("OTHER-789"))
 
         assertEquals(4, adapter.calls.size)
         client.close()
@@ -113,13 +117,13 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient with failing adapter handles errors`() {
-        val adapter = FailingAdapter("Service temporarily unavailable")
+        val adapter = FailingAdapter("Plugin temporarily unavailable")
         val client = ExternalClient.wrap(adapter)
 
-        val result = client.getTicketStatus("TEST-123")
+        val result = client.getTaskStatus("TEST-123")
 
-        assertTrue(result is TicketLookupResult.Error)
-        assertEquals("Service temporarily unavailable", (result as TicketLookupResult.Error).message)
+        assertTrue(result is TaskSearchResult.Error)
+        assertEquals("Plugin temporarily unavailable", (result as TaskSearchResult.Error).message)
 
         client.close()
     }
@@ -127,40 +131,40 @@ class ExternalClientIntegrationTest {
     @Test
     fun `ExternalClient with stateful adapter maintains state`() {
         val adapter = StatefulAdapter()
-        adapter.setTicketStatus("PROJ-1", "To Do")
-        adapter.setTicketStatus("PROJ-2", "In Progress")
-        adapter.setTicketStatus("PROJ-3", "Done")
+        adapter.setTaskStatus("PROJ-1", "To Do")
+        adapter.setTaskStatus("PROJ-2", "In Progress")
+        adapter.setTaskStatus("PROJ-3", "Done")
 
         val client = ExternalClient.wrap(adapter)
 
-        assertEquals(TicketLookupResult.Found("To Do"), client.getTicketStatus("PROJ-1"))
-        assertEquals(TicketLookupResult.Found("In Progress"), client.getTicketStatus("PROJ-2"))
-        assertEquals(TicketLookupResult.Found("Done"), client.getTicketStatus("PROJ-3"))
-        assertEquals(TicketLookupResult.NotFound, client.getTicketStatus("PROJ-4"))
+        assertEquals(TaskSearchResult.Found("To Do"), client.getTaskStatus("PROJ-1"))
+        assertEquals(TaskSearchResult.Found("In Progress"), client.getTaskStatus("PROJ-2"))
+        assertEquals(TaskSearchResult.Found("Done"), client.getTaskStatus("PROJ-3"))
+        assertEquals(TaskSearchResult.NotFound, client.getTaskStatus("PROJ-4"))
 
         // Update state
-        adapter.setTicketStatus("PROJ-1", "Done")
-        adapter.removeTicket("PROJ-2")
+        adapter.setTaskStatus("PROJ-1", "Done")
+        adapter.removeTask("PROJ-2")
 
-        assertEquals(TicketLookupResult.Found("Done"), client.getTicketStatus("PROJ-1"))
-        assertEquals(TicketLookupResult.NotFound, client.getTicketStatus("PROJ-2"))
+        assertEquals(TaskSearchResult.Found("Done"), client.getTaskStatus("PROJ-1"))
+        assertEquals(TaskSearchResult.NotFound, client.getTaskStatus("PROJ-2"))
 
         client.close()
     }
 
     @Test
     fun `multiple ExternalClient instances work independently`() {
-        val adapter1 = MockAdapter(ticketResult = TicketLookupResult.Found("Status1"))
-        val adapter2 = MockAdapter(ticketResult = TicketLookupResult.Found("Status2"))
+        val adapter1 = MockAdapter(taskResult = TaskSearchResult.Found("Status1"))
+        val adapter2 = MockAdapter(taskResult = TaskSearchResult.Found("Status2"))
 
         val client1 = ExternalClient.wrap(adapter1)
         val client2 = ExternalClient.wrap(adapter2)
 
-        val result1 = client1.getTicketStatus("TEST-1")
-        val result2 = client2.getTicketStatus("TEST-2")
+        val result1 = client1.getTaskStatus("TEST-1")
+        val result2 = client2.getTaskStatus("TEST-2")
 
-        assertEquals(TicketLookupResult.Found("Status1"), result1)
-        assertEquals(TicketLookupResult.Found("Status2"), result2)
+        assertEquals(TaskSearchResult.Found("Status1"), result1)
+        assertEquals(TaskSearchResult.Found("Status2"), result2)
 
         client1.close()
         client2.close()
@@ -169,24 +173,24 @@ class ExternalClientIntegrationTest {
     @Test
     fun `ExternalClient handles various authentication configurations`() {
         val configs = listOf(
-            AuthConfig.None,
-            AuthConfig.Bearer("test-token"),
-            AuthConfig.Basic("user", "pass"),
-            AuthConfig.JiraPat("email@example.com", "token")
+            Authentication.None,
+            Authentication.Bearer("test-token"),
+            Authentication.Basic("user", "pass"),
+            Authentication.PersonalAccessToken("email@example.com", "token")
         )
 
         configs.forEach { auth ->
-            val integration = ExternalIntegration.Rest(
+            val integration = Plugin.Http(
                 baseUrl = "https://api.example.com",
                 auth = auth
             )
             val client = ExternalClient.from(integration)
 
             // Verify basic operations work
-            client.getTicketStatus("")
+            client.getTaskStatus("")
             client.trackSession(SessionSnapshot(
                 branch = "main",
-                ticket = null,
+                task = null,
                 startTime = Instant.fromEpochMilliseconds(0),
                 endTime = Instant.fromEpochMilliseconds(1000),
                 durationMs = 1000

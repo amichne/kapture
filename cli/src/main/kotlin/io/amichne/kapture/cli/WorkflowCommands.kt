@@ -1,13 +1,13 @@
 package io.amichne.kapture.cli
 
-import io.amichne.kapture.core.config.Config
-import io.amichne.kapture.core.exec.Exec
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.git.BranchUtils
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.http.adapter.IssueDetailsResult
-import io.amichne.kapture.core.http.adapter.SubtaskCreationResult
-import io.amichne.kapture.core.http.adapter.TransitionResult
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.util.Environment
 import java.io.File
 import kotlin.system.exitProcess
@@ -53,9 +53,9 @@ object WorkflowCommands {
         val subtaskId = args[0]
 
         // Validate subtask exists and get current status
-        val statusResult = client.getTicketStatus(subtaskId)
+        val statusResult = client.getTaskStatus(subtaskId)
         when (statusResult) {
-            is TicketLookupResult.Found -> {
+            is TaskSearchResult.Found -> {
                 val normalizedStatus = statusResult.status.replace(" ", "_").uppercase()
                 if (!normalizedStatus.contains("READY") && !normalizedStatus.contains("IN_PROGRESS")) {
                     System.err.println("✗ Subtask ${subtaskId} must be in 'Ready for Dev' status")
@@ -63,21 +63,21 @@ object WorkflowCommands {
                     exitProcess(1)
                 }
             }
-            TicketLookupResult.NotFound -> {
+            TaskSearchResult.NotFound -> {
                 System.err.println("✗ Subtask ${subtaskId} not found")
                 exitProcess(1)
             }
-            is TicketLookupResult.Error -> {
+            is TaskSearchResult.Error -> {
                 System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
                 exitProcess(1)
             }
         }
 
-        // Generate branch name from pattern and ticket
+        // Generate branch name from pattern and task
         val branchName = generateBranchName(subtaskId, config)
 
         println("Creating branch: ${branchName}")
-        val createBranchResult = Exec.capture(
+        val createBranchResult = CommandExecutor.capture(
             cmd = listOf("git", "checkout", "-b", branchName),
             workDir = workDir,
             env = env
@@ -90,12 +90,12 @@ object WorkflowCommands {
 
         // Transition subtask to "In Progress"
         println("Transitioning ${subtaskId} to 'In Progress'...")
-        when (val transitionResult = client.adapter.transitionIssue(subtaskId, "In Progress")) {
-            is TransitionResult.Success -> {
+        when (val transitionResult = client.adapter.transitionTask(subtaskId, "In Progress")) {
+            is TaskTransitionResult.Success -> {
                 println("✓ Branch created: ${branchName}")
                 println("✓ Subtask ${subtaskId} → In Progress")
             }
-            is TransitionResult.Failure -> {
+            is TaskTransitionResult.Failure -> {
                 System.err.println("⚠ Branch created but failed to transition subtask: ${transitionResult.message}")
                 exitProcess(1)
             }
@@ -103,8 +103,8 @@ object WorkflowCommands {
     }
 
     fun executeReview(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
-        // Get current branch and extract ticket
-        val currentBranchResult = Exec.capture(
+        // Get current branch and extract task
+        val currentBranchResult = CommandExecutor.capture(
             cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
             workDir = workDir,
             env = env
@@ -116,18 +116,18 @@ object WorkflowCommands {
         }
 
         val currentBranch = currentBranchResult.stdout.trim()
-        val subtaskId = BranchUtils.extractTicket(currentBranch, config.branchPattern)
+        val subtaskId = BranchUtils.extractTask(currentBranch, config.branchPattern)
 
         if (subtaskId.isNullOrBlank()) {
-            System.err.println("✗ Current branch '${currentBranch}' does not contain a valid ticket ID")
+            System.err.println("✗ Current branch '${currentBranch}' does not contain a valid task ID")
             System.err.println("  Expected pattern: ${config.branchPattern}")
             exitProcess(1)
         }
 
         // Validate subtask is in "In Progress" status
-        val statusResult = client.getTicketStatus(subtaskId)
+        val statusResult = client.getTaskStatus(subtaskId)
         when (statusResult) {
-            is TicketLookupResult.Found -> {
+            is TaskSearchResult.Found -> {
                 val normalizedStatus = statusResult.status.replace(" ", "_").uppercase()
                 if (!normalizedStatus.contains("IN_PROGRESS")) {
                     System.err.println("✗ Subtask ${subtaskId} must be in 'In Progress' status")
@@ -135,31 +135,31 @@ object WorkflowCommands {
                     exitProcess(1)
                 }
             }
-            TicketLookupResult.NotFound -> {
+            TaskSearchResult.NotFound -> {
                 System.err.println("✗ Subtask ${subtaskId} not found")
                 exitProcess(1)
             }
-            is TicketLookupResult.Error -> {
+            is TaskSearchResult.Error -> {
                 System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
                 exitProcess(1)
             }
         }
 
-        // Get issue details for PR body
-        val issueDetails = client.adapter.getIssueDetails(subtaskId)
-        val (title, body) = when (issueDetails) {
-            is IssueDetailsResult.Success -> {
-                Pair(issueDetails.summary, buildPullRequestBody(issueDetails, client))
+        // Get task details for PR body
+        val taskDetails = client.adapter.getTaskDetails(subtaskId)
+        val (title, body) = when (taskDetails) {
+            is TaskDetailsResult.Success -> {
+                Pair(taskDetails.summary, buildPullRequestBody(taskDetails, client))
             }
-            is IssueDetailsResult.Failure -> {
-                System.err.println("⚠ Could not fetch issue details: ${issueDetails.message}")
+            is TaskDetailsResult.Failure -> {
+                System.err.println("⚠ Could not fetch task details: ${taskDetails.message}")
                 Pair(subtaskId, "")
             }
         }
 
         // Push current branch to remote
         println("Pushing branch to remote...")
-        val pushResult = Exec.capture(
+        val pushResult = CommandExecutor.capture(
             cmd = listOf("git", "push", "-u", "origin", currentBranch),
             workDir = workDir,
             env = env
@@ -178,7 +178,7 @@ object WorkflowCommands {
             "--body", body
         )
 
-        val prResult = Exec.capture(
+        val prResult = CommandExecutor.capture(
             cmd = prCommand,
             workDir = workDir,
             env = env
@@ -191,13 +191,13 @@ object WorkflowCommands {
 
         // Transition subtask to "Code Review"
         println("Transitioning ${subtaskId} to 'Code Review'...")
-        when (val transitionResult = client.adapter.transitionIssue(subtaskId, "Code Review")) {
-            is TransitionResult.Success -> {
+        when (val transitionResult = client.adapter.transitionTask(subtaskId, "Code Review")) {
+            is TaskTransitionResult.Success -> {
                 println("✓ Pull request created")
                 println("✓ Subtask ${subtaskId} → Code Review")
                 println("\n${prResult.stdout}")
             }
-            is TransitionResult.Failure -> {
+            is TaskTransitionResult.Failure -> {
                 System.err.println("⚠ PR created but failed to transition subtask: ${transitionResult.message}")
                 println("\n${prResult.stdout}")
             }
@@ -205,8 +205,8 @@ object WorkflowCommands {
     }
 
     fun executeMerge(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
-        // Get current branch and extract ticket
-        val currentBranchResult = Exec.capture(
+        // Get current branch and extract task
+        val currentBranchResult = CommandExecutor.capture(
             cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
             workDir = workDir,
             env = env
@@ -218,17 +218,17 @@ object WorkflowCommands {
         }
 
         val currentBranch = currentBranchResult.stdout.trim()
-        val subtaskId = BranchUtils.extractTicket(currentBranch, config.branchPattern)
+        val subtaskId = BranchUtils.extractTask(currentBranch, config.branchPattern)
 
         if (subtaskId.isNullOrBlank()) {
-            System.err.println("✗ Current branch '${currentBranch}' does not contain a valid ticket ID")
+            System.err.println("✗ Current branch '${currentBranch}' does not contain a valid task ID")
             exitProcess(1)
         }
 
         // Validate subtask is in "Code Review" status
-        val statusResult = client.getTicketStatus(subtaskId)
+        val statusResult = client.getTaskStatus(subtaskId)
         when (statusResult) {
-            is TicketLookupResult.Found -> {
+            is TaskSearchResult.Found -> {
                 val normalizedStatus = statusResult.status.replace(" ", "_").uppercase()
                 if (!normalizedStatus.contains("CODE_REVIEW") && !normalizedStatus.contains("REVIEW")) {
                     System.err.println("✗ Subtask ${subtaskId} must be in 'Code Review' status")
@@ -236,11 +236,11 @@ object WorkflowCommands {
                     exitProcess(1)
                 }
             }
-            TicketLookupResult.NotFound -> {
+            TaskSearchResult.NotFound -> {
                 System.err.println("✗ Subtask ${subtaskId} not found")
                 exitProcess(1)
             }
-            is TicketLookupResult.Error -> {
+            is TaskSearchResult.Error -> {
                 System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
                 exitProcess(1)
             }
@@ -248,7 +248,7 @@ object WorkflowCommands {
 
         // Merge pull request using GitHub CLI
         println("Merging pull request...")
-        val mergeResult = Exec.capture(
+        val mergeResult = CommandExecutor.capture(
             cmd = listOf("gh", "pr", "merge", "--auto", "--squash"),
             workDir = workDir,
             env = env
@@ -261,32 +261,32 @@ object WorkflowCommands {
 
         // Transition subtask to "Closed"
         println("Transitioning ${subtaskId} to 'Closed'...")
-        when (val transitionResult = client.adapter.transitionIssue(subtaskId, "Done")) {
-            is TransitionResult.Success -> {
+        when (val transitionResult = client.adapter.transitionTask(subtaskId, "Done")) {
+            is TaskTransitionResult.Success -> {
                 println("✓ Pull request merged")
                 println("✓ Subtask ${subtaskId} → Closed")
             }
-            is TransitionResult.Failure -> {
+            is TaskTransitionResult.Failure -> {
                 System.err.println("⚠ PR merged but failed to transition subtask: ${transitionResult.message}")
             }
         }
     }
 
-    private fun generateBranchName(ticketId: String, config: Config): String {
+    private fun generateBranchName(taskId: String, config: Config): String {
         // Extract pattern format and generate branch name
-        // For now, use a simple format: TICKET-ID/description
-        return "${ticketId}/dev"
+        // For now, use a simple format: TASK-ID/description
+        return "${taskId}/dev"
     }
 
-    private fun buildPullRequestBody(details: IssueDetailsResult.Success, client: ExternalClient<*>): String {
+    private fun buildPullRequestBody(details: TaskDetailsResult.Success, client: ExternalClient<*>): String {
         val sections = mutableListOf<String>()
 
-        // Add Jira ticket details section
+        // Add Jira task details section
         sections.add("""
             <details>
-            <summary>📋 Jira Ticket Details</summary>
+            <summary>📋 Jira Task Details</summary>
 
-            **Ticket:** ${details.key}
+            **Task:** ${details.key}
             **Summary:** ${details.summary}
 
             ${details.description.ifBlank { "_No description provided_" }}

@@ -1,6 +1,6 @@
 package io.amichne.kapture.interceptors.session
 
-import io.amichne.kapture.core.model.TimeSession
+import io.amichne.kapture.core.model.session.SessionTimekeeper
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.core.util.FileUtils
 import kotlinx.serialization.encodeToString
@@ -19,12 +19,12 @@ class SessionStore(
 
     /**
      * Reads the persisted session file if present and returns the decoded
-     * `TimeSession`, logging any failures to the debug log.
+     * `SessionTimekeeper`, logging any failures to the debug log.
      */
-    fun load(): TimeSession? = runCatching {
+    fun load(): SessionTimekeeper? = runCatching {
         if (!Files.exists(sessionPath)) return@runCatching null
         val text = Files.readString(sessionPath)
-        json.decodeFromString(TimeSession.serializer(), text)
+        json.decodeFromString(SessionTimekeeper.serializer(), text)
     }.getOrElse { throwable ->
         log("Failed to load session: ${throwable.message}")
         null
@@ -34,7 +34,7 @@ class SessionStore(
      * Persists the provided session, removing the backing file when `null`
      * so that tracking can be cleanly disabled or reset.
      */
-    fun save(session: TimeSession?) {
+    fun save(session: SessionTimekeeper?) {
         if (session == null) {
             runCatching { Files.deleteIfExists(sessionPath) }
             return

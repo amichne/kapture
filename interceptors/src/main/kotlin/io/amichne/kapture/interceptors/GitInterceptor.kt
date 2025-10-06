@@ -1,8 +1,8 @@
 package io.amichne.kapture.interceptors
 
-import io.amichne.kapture.core.config.Config
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.model.Invocation
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.command.CommandInvocation
 
 interface GitInterceptor {
     /**
@@ -10,7 +10,7 @@ interface GitInterceptor {
      * continue, or provide an exit code to block execution and abort early.
      */
     fun before(
-        invocation: Invocation,
+        commandInvocation: CommandInvocation,
         config: Config,
         client: ExternalClient<*>
     ): Int? = null
@@ -21,7 +21,7 @@ interface GitInterceptor {
      * success.
      */
     fun after(
-        invocation: Invocation,
+        commandInvocation: CommandInvocation,
         exitCode: Int,
         config: Config,
         client: ExternalClient<*>

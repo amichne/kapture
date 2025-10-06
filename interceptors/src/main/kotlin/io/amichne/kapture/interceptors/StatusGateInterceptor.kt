@@ -1,39 +1,41 @@
 package io.amichne.kapture.interceptors
 
-import io.amichne.kapture.core.config.Config
+import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.git.BranchUtils
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.model.Invocation
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Enforcement
+import io.amichne.kapture.core.model.config.StatusRules
 
 class StatusGateInterceptor : GitInterceptor {
     /**
-     * Blocks commits and pushes when the current branch's ticket status fails
+     * Blocks commits and pushes when the current branch's task status fails
      * the configured allow list, emitting WARN or ERROR messages based on the
      * enforcement mode.
      */
     override fun before(
-        invocation: Invocation,
+        commandInvocation: CommandInvocation,
         config: Config,
         client: ExternalClient<*>
     ): Int? {
         val mode = config.enforcement.statusCheck
-        if (mode == Config.Enforcement.Mode.OFF) return null
+        if (mode == Enforcement.Mode.OFF) return null
 
-        val command = invocation.command?.lowercase() ?: return null
+        val command = commandInvocation.command?.lowercase() ?: return null
         if (command !in commands) return null
 
-        val branch = currentBranch(invocation) ?: return null
-        val ticket = BranchUtils.extractTicket(branch, config.branchPattern)
-        if (ticket.isNullOrBlank()) {
-            return handleViolation(mode, command, "Branch '$branch' does not contain ticket id")
+        val branch = currentBranch(commandInvocation) ?: return null
+        val task = BranchUtils.extractTask(branch, config.branchPattern)
+        if (task.isNullOrBlank()) {
+            return handleViolation(mode, command, "Branch '$branch' does not contain a task id")
         }
 
-        val result = client.getTicketStatus(ticket)
+        val result = client.getTaskStatus(task)
         val isAllowed = when (result) {
-            is TicketLookupResult.Found -> isStatusAllowed(command, result.status, config.statusRules)
-            TicketLookupResult.NotFound -> false
-            is TicketLookupResult.Error -> false
+            is TaskSearchResult.Found -> isStatusAllowed(command, result.status, config.statusRules)
+            TaskSearchResult.NotFound -> false
+            is TaskSearchResult.Error -> false
         }
 
         if (isAllowed) {
@@ -41,36 +43,36 @@ class StatusGateInterceptor : GitInterceptor {
         }
 
         val message = when (result) {
-            is TicketLookupResult.Found -> "Ticket ${ticket} status ${result.status} blocks $command"
-            TicketLookupResult.NotFound -> "Ticket $ticket not found; cannot $command"
-            is TicketLookupResult.Error -> "Ticket lookup failed (${result.message}); cannot verify status"
+            is TaskSearchResult.Found -> "Task ${task} status ${result.status} blocks $command"
+            TaskSearchResult.NotFound -> "Task $task not found; cannot $command"
+            is TaskSearchResult.Error -> "Task lookup failed (${result.message}); cannot verify status"
         }
         return handleViolation(mode, command, message)
     }
 
     private fun handleViolation(
-        mode: Config.Enforcement.Mode,
+        mode: Enforcement.Mode,
         command: String,
         message: String
     ): Int? {
         val exitCode = if (command == "commit") COMMIT_EXIT else PUSH_EXIT
         return when (mode) {
-            Config.Enforcement.Mode.WARN -> {
+            Enforcement.Mode.WARN -> {
                 System.err.println("[kapture] WARN: $message")
                 null
             }
 
-            Config.Enforcement.Mode.BLOCK -> {
+            Enforcement.Mode.BLOCK -> {
                 System.err.println("[kapture] ERROR: $message")
                 exitCode
             }
 
-            Config.Enforcement.Mode.OFF -> null
+            Enforcement.Mode.OFF -> null
         }
     }
 
-    private fun currentBranch(invocation: Invocation): String? {
-        val result = invocation.captureGit("rev-parse", "--abbrev-ref", "HEAD")
+    private fun currentBranch(commandInvocation: CommandInvocation): String? {
+        val result = commandInvocation.captureGit("rev-parse", "--abbrev-ref", "HEAD")
         if (result.exitCode != 0) return null
         val branch = result.stdout.trim()
         return branch.takeUnless { it.isEmpty() || it == "HEAD" }
@@ -79,7 +81,7 @@ class StatusGateInterceptor : GitInterceptor {
     private fun isStatusAllowed(
         command: String,
         status: String,
-        rules: Config.StatusRules
+        rules: StatusRules
     ): Boolean {
         return when (command) {
             "commit" -> status in rules.allowCommitWhen

@@ -1,24 +1,25 @@
 package io.amichne.kapture.core.http
 
-import io.amichne.kapture.core.http.adapter.Adapter
-import io.amichne.kapture.core.http.adapter.SubtaskCreationResult
-import io.amichne.kapture.core.http.adapter.TransitionResult
-import io.amichne.kapture.core.http.adapter.IssueDetailsResult
-import io.amichne.kapture.core.model.SessionSnapshot
+import io.amichne.kapture.core.adapter.Adapter
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.TaskSearchResult
 
 /**
  * Mock adapter for testing that tracks all invocations and allows
  * configurable responses.
  */
 class MockAdapter(
-    private val ticketResult: TicketLookupResult = TicketLookupResult.Found("IN_PROGRESS"),
-    private val ticketResultProvider: ((String) -> TicketLookupResult)? = null
+    private val taskResult: TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS"),
+    private val taskResultProvider: ((String) -> TaskSearchResult)? = null
 ) : Adapter {
     val calls = mutableListOf<AdapterCall>()
 
-    override fun getTicketStatus(ticketId: String): TicketLookupResult {
-        calls.add(AdapterCall.GetTicketStatus(ticketId))
-        return ticketResultProvider?.invoke(ticketId) ?: ticketResult
+    override fun getTaskStatus(taskId: String): TaskSearchResult {
+        calls.add(AdapterCall.GetTaskStatus(taskId))
+        return taskResultProvider?.invoke(taskId) ?: taskResult
     }
 
     override fun trackSession(snapshot: SessionSnapshot) {
@@ -30,14 +31,14 @@ class MockAdapter(
         return SubtaskCreationResult.Success("${parentId}-1")
     }
 
-    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult {
-        calls.add(AdapterCall.TransitionIssue(issueId, targetStatus))
-        return TransitionResult.Success
+    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult {
+        calls.add(AdapterCall.TransitionTask(taskId, targetStatus))
+        return TaskTransitionResult.Success
     }
 
-    override fun getIssueDetails(issueId: String): IssueDetailsResult {
-        calls.add(AdapterCall.GetIssueDetails(issueId))
-        return IssueDetailsResult.Success(issueId, "Test summary", "Test description", null)
+    override fun getTaskDetails(taskId: String): TaskDetailsResult {
+        calls.add(AdapterCall.GetTaskDetails(taskId))
+        return TaskDetailsResult.Success(taskId, "Test summary", "Test description", null)
     }
 
     override fun close() {
@@ -49,11 +50,11 @@ class MockAdapter(
     }
 
     sealed class AdapterCall {
-        data class GetTicketStatus(val ticketId: String) : AdapterCall()
+        data class GetTaskStatus(val taskId: String) : AdapterCall()
         data class TrackSession(val snapshot: SessionSnapshot) : AdapterCall()
         data class CreateSubtask(val parentId: String, val title: String?) : AdapterCall()
-        data class TransitionIssue(val issueId: String, val targetStatus: String) : AdapterCall()
-        data class GetIssueDetails(val issueId: String) : AdapterCall()
+        data class TransitionTask(val taskId: String, val targetStatus: String) : AdapterCall()
+        data class GetTaskDetails(val taskId: String) : AdapterCall()
         data object Close : AdapterCall()
     }
 }
@@ -62,10 +63,10 @@ class MockAdapter(
  * Adapter that always fails with a specific error message.
  */
 class FailingAdapter(
-    private val errorMessage: String = "Service unavailable"
+    private val errorMessage: String = "Plugin unavailable"
 ) : Adapter {
-    override fun getTicketStatus(ticketId: String): TicketLookupResult =
-        TicketLookupResult.Error(errorMessage)
+    override fun getTaskStatus(taskId: String): TaskSearchResult =
+        TaskSearchResult.Error(errorMessage)
 
     override fun trackSession(snapshot: SessionSnapshot) {
         // No-op for failing adapter
@@ -74,11 +75,11 @@ class FailingAdapter(
     override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult =
         SubtaskCreationResult.Failure(errorMessage)
 
-    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult =
-        TransitionResult.Failure(errorMessage)
+    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult =
+        TaskTransitionResult.Failure(errorMessage)
 
-    override fun getIssueDetails(issueId: String): IssueDetailsResult =
-        IssueDetailsResult.Failure(errorMessage)
+    override fun getTaskDetails(taskId: String): TaskDetailsResult =
+        TaskDetailsResult.Failure(errorMessage)
 
     override fun close() {
         // No-op
@@ -86,27 +87,27 @@ class FailingAdapter(
 }
 
 /**
- * Adapter that simulates various ticket statuses for testing.
+ * Adapter that simulates various task statuses for testing.
  */
 class StatefulAdapter : Adapter {
-    private val ticketStatuses = mutableMapOf<String, String>()
+    private val taskStatuses = mutableMapOf<String, String>()
 
-    fun setTicketStatus(ticketId: String, status: String) {
-        ticketStatuses[ticketId] = status
+    fun setTaskStatus(taskId: String, status: String) {
+        taskStatuses[taskId] = status
     }
 
-    fun removeTicket(ticketId: String) {
-        ticketStatuses.remove(ticketId)
+    fun removeTask(taskId: String) {
+        taskStatuses.remove(taskId)
     }
 
     fun clear() {
-        ticketStatuses.clear()
+        taskStatuses.clear()
     }
 
-    override fun getTicketStatus(ticketId: String): TicketLookupResult {
-        return when (val status = ticketStatuses[ticketId]) {
-            null -> TicketLookupResult.NotFound
-            else -> TicketLookupResult.Found(status)
+    override fun getTaskStatus(taskId: String): TaskSearchResult {
+        return when (val status = taskStatuses[taskId]) {
+            null -> TaskSearchResult.NotFound
+            else -> TaskSearchResult.Found(status)
         }
     }
 
@@ -117,13 +118,13 @@ class StatefulAdapter : Adapter {
     override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult =
         SubtaskCreationResult.Success("${parentId}-1")
 
-    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult {
-        ticketStatuses[issueId] = targetStatus
-        return TransitionResult.Success
+    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult {
+        taskStatuses[taskId] = targetStatus
+        return TaskTransitionResult.Success
     }
 
-    override fun getIssueDetails(issueId: String): IssueDetailsResult =
-        IssueDetailsResult.Success(issueId, "Test summary", "Test description", null)
+    override fun getTaskDetails(taskId: String): TaskDetailsResult =
+        TaskDetailsResult.Success(taskId, "Test summary", "Test description", null)
 
     override fun close() {
         // No-op
