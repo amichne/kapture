@@ -623,8 +623,8 @@ FodyWeavers.xsd
 *.sln.iml
 
 ### Gradle template
-.gradle
-.gradle-home
+.gradle/
+.gradle-home/
 **/build/
 !src/**/build/
 
