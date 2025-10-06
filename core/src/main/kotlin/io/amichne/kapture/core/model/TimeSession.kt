@@ -19,12 +19,3 @@ data class TimeSession(
      */
     fun durationUntil(end: Instant): Long = end.toEpochMilliseconds() - startTime.toEpochMilliseconds()
 }
-
-@Serializable
-data class SessionSnapshot(
-    val branch: String,
-    val ticket: String?,
-    val startTime: Instant,
-    val endTime: Instant,
-    val durationMs: Long
-)

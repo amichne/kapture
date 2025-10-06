@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import io.amichne.kapture.core.config.ExternalIntegration
 
 class ConfigTest {
     @Test
@@ -15,7 +16,10 @@ class ConfigTest {
             configFile,
             """
                 {
-                  "externalBaseUrl": "https://api.example.com",
+                  "external": {
+                    "type": "rest",
+                    "baseUrl": "https://api.example.com"
+                  },
                   "enforcement": { "branchPolicy": "BLOCK", "statusCheck": "WARN" },
                   "sessionTrackingIntervalMs": 1000
                 }
@@ -26,7 +30,8 @@ class ConfigTest {
         System.setProperty("user.home", tempDir.toString())
         try {
             val config = Config.load(configFile)
-            assertEquals("https://api.example.com", config.externalBaseUrl)
+            val external = config.external as ExternalIntegration.Rest
+            assertEquals("https://api.example.com", external.baseUrl)
             assertEquals(Config.Enforcement.Mode.BLOCK, config.enforcement.branchPolicy)
             assertEquals(1000, config.sessionTrackingIntervalMs)
             assertTrue(Files.exists(Path.of(config.localStateRoot)))
@@ -42,7 +47,8 @@ class ConfigTest {
         System.setProperty("user.home", tempDir.toString())
         try {
             val config = Config.load(tempDir.resolve("missing.json"))
-            assertEquals("http://localhost:8080", config.externalBaseUrl)
+            val external = config.external as ExternalIntegration.Rest
+            assertEquals("http://localhost:8080", external.baseUrl)
             assertTrue(config.trackingEnabled)
         } finally {
             System.setProperty("user.home", originalHome)

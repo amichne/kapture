@@ -27,7 +27,7 @@ class SessionTrackingInterceptor(
         invocation: Invocation,
         exitCode: Int,
         config: Config,
-        client: ExternalClient
+        client: ExternalClient<*>
     ) {
         val store = SessionStore(config.localStateRoot, json)
 
@@ -73,7 +73,7 @@ class SessionTrackingInterceptor(
     private fun closeSession(
         session: TimeSession,
         end: Instant,
-        client: ExternalClient
+        client: ExternalClient<*>
     ) {
         val duration = session.durationUntil(end)
         if (duration <= 0) return

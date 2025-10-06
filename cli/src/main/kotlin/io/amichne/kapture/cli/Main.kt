@@ -4,6 +4,7 @@ import io.amichne.kapture.core.config.Config
 import io.amichne.kapture.core.exec.Exec
 import io.amichne.kapture.core.git.RealGitResolver
 import io.amichne.kapture.core.http.ExternalClient
+import io.amichne.kapture.core.config.ExternalIntegration
 import io.amichne.kapture.core.model.Invocation
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.interceptors.InterceptorRegistry
@@ -28,9 +29,10 @@ fun main(rawArgs: Array<String>) {
     val workDir = File(System.getProperty("user.dir"))
     val env = Environment.full()
 
-    ExternalClient(config.externalBaseUrl, config.apiKey).use { client ->
+
+    ExternalClient.from(config.external).use { client ->
         if (args.firstOrNull() == "kapture") {
-            runKaptureCommand(args.drop(1), config, client, realGit)
+            runKaptureCommand(args.drop(1), config, realGit)
             return
         }
 
@@ -73,14 +75,19 @@ fun isCompletionOrHelp(args: List<String>): Boolean {
 private fun runKaptureCommand(
     args: List<String>,
     config: Config,
-    client: ExternalClient,
     realGit: String
 ) {
     when (args.firstOrNull()) {
         "status" -> {
             println("Kapture:")
             println("  real git: $realGit")
-            println("  external base: ${config.externalBaseUrl}")
+            val externalDescription = when (val ext = config.external) {
+                is ExternalIntegration.Rest ->
+                    "REST API (${ext.baseUrl})"
+                is ExternalIntegration.JiraCli ->
+                    "jira-cli (${ext.executable})"
+            }
+            println("  external integration: $externalDescription")
             println("  tracking enabled: ${config.trackingEnabled}")
         }
 

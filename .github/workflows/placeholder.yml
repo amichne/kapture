@@ -1,0 +1,186 @@
+name: placeholder.yml
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 GraalVM
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'graal'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/build/test-results/**/*.xml'
+
+  build:
+    name: Build Native Binaries
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linuxX64
+            artifact: linux-x64
+          - os: macos-13
+            target: macosX64
+            artifact: macos-x64
+          - os: macos-14
+            target: macosArm64
+            artifact: macos-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'graal'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build native binary
+        run: ./gradlew :cli:nativeBuild
+
+#      - name: Verify binary
+#        run: |
+#          BINARY="cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          chmod +x "$BINARY"
+#          ls -lh "$BINARY"
+#
+#      - name: Smoke test - version
+#        run: |
+#          BINARY="cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          "$BINARY" --version
+#
+#      - name: Smoke test - list-cmds
+#        run: |
+#          BINARY="cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          "$BINARY" --list-cmds=main | grep -q "commit"
+#
+#      - name: Smoke test - help
+#        run: |
+#          BINARY="cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          "$BINARY" help -a > /dev/null
+#
+#      - name: Smoke test - gira commands
+#        run: |
+#          BINARY="cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          "$BINARY" gira help
+#          "$BINARY" gira doctor || true
+
+#      - name: Create test repository
+#        run: |
+#          mkdir -p test-repo
+#          cd test-repo
+#          git init
+#          git config user.email "test@example.com"
+#          git config user.name "Test User"
+#          echo "test" > test.txt
+#          git add test.txt
+#          git commit -m "Initial commit"
+#
+#      - name: Integration test - passthrough
+#        run: |
+#          BINARY="../cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          cd test-repo
+#          "$BINARY" status
+#          "$BINARY" log --oneline
+#
+#      - name: Integration test - branch policy (warn mode)
+#        run: |
+#          BINARY="../cli/build/bin/${{ matrix.target }}/releaseExecutable/git.kexe"
+#          cd test-repo
+#
+#          # Create config with WARN mode
+#          mkdir -p ~/.kapture
+#          cat > ~/.kapture/config.json << 'EOF'
+#          {
+#            "enforcement": {
+#              "branchPolicy": "WARN",
+#              "statusCheck": "OFF"
+#            },
+#            "trackingEnabled": false
+#          }
+#          EOF
+#
+#          # Should warn but succeed
+#          "$BINARY" checkout -b invalid-branch || exit 1
+#          "$BINARY" checkout main
+#
+#          # Valid branch should succeed
+#          "$BINARY" checkout -b PROJ-123/valid-feature || exit 1
+#
+#      - name: Package binary
+#        run: ./gradlew :cli:packageBinaries --no-daemon
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kapture
+          path: cli/build/native/nativeCompile/kapture
+          retention-days: 30
+
+  release:
+    name: Create Release
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cli/build/native/nativeCompile/kapture
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+#  security-scan:
+#    name: Security Scan
+#    runs-on: ubuntu-22.04
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Run dependency check
+#        run: |
+#          ./gradlew dependencyCheckAnalyze || true
+#        continue-on-error: true

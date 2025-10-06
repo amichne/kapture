@@ -1,12 +1,11 @@
 package io.amichne.kapture.interceptors
 
 import io.amichne.kapture.core.config.Config
+import io.amichne.kapture.core.http.adapter.Adapter
 import io.amichne.kapture.core.http.ExternalClient
+import io.amichne.kapture.core.http.TicketLookupResult
 import io.amichne.kapture.core.model.Invocation
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.HttpStatusCode
+import io.amichne.kapture.core.model.SessionSnapshot
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -21,15 +20,11 @@ class BranchPolicyInterceptorTest {
         )
         val interceptor = BranchPolicyInterceptor()
         val invocation = TestInvocation(listOf("checkout", "-b", "feature/no-ticket"))
-        val client = ExternalClient(
-            baseUrl = "https://example.test",
-            apiKey = null,
-            client = HttpClient(MockEngine) {
-                engine {
-                    addHandler { respond("", HttpStatusCode.NotFound) }
-                }
-            }
-        )
+        val client = ExternalClient.wrap(object : Adapter {
+            override fun getTicketStatus(ticketId: String): TicketLookupResult = TicketLookupResult.NotFound
+            override fun trackSession(snapshot: SessionSnapshot) {}
+            override fun close() {}
+        })
 
         val exitCode = interceptor.before(invocation, config, client)
         assertEquals(BranchPolicyInterceptor.BRANCH_POLICY_EXIT_CODE, exitCode)

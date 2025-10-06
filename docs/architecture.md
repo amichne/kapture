@@ -37,8 +37,9 @@ image).
      If no config exists, defaults are used and the state directory is created.
 3. `RealGitResolver.resolve` enumerates candidates from `REAL_GIT`, the config hint, `$PATH`, and well-known fallbacks.
    It avoids returning the wrapper artefact itself to stop infinite recursion.
-4. `ExternalClient` is constructed with the base URL/API key from the config. It uses Ktor CIO, content negotiation, and
-   JSON parsing to perform ticket lookups and session tracking calls. Timeouts are set to 10 seconds.
+4. `ExternalClient` is constructed from the `external` integration config. For REST backends it spins up a Ktor CIO
+   client (10 second timeouts, JSON negotiation); for the Jira CLI backend it shells out to the `jira` binary and parses
+   its JSON output.
 5. The CLI branches:
   - If the first argument is `kapture`, the built-in subcommand handler runs (currently `status`/`help`).
   - Certain read-only Git commands (`--version`, `help`, `rev-parse`, completion flags, etc.) are proxied immediately.
@@ -50,22 +51,24 @@ image).
 8. After Git exits, `GitInterceptor.after` hooks run in the same order (e.g. to emit session tracking events).
 9. The CLI terminates with Git’s exit code.
 
-## Network Integration
+## External Integrations
 
-`ExternalClient` exposes two operations:
+`ExternalClient` exposes two operations regardless of backend:
 
-- `getTicketStatus(ticketId)` – GET `/tickets/{id}/status`, returning a simple status string used by
-  `StatusGateInterceptor`.
-- `trackSession(snapshot)` – POST `/sessions/track`, guarded by `trackingEnabled`.
+- `getTicketStatus(ticketId)` – queries the configured integration (REST endpoint or `jira-cli issue view`) and returns
+  a status string for `StatusGateInterceptor`.
+- `trackSession(snapshot)` – forwards telemetry when supported. REST integrations POST to `/sessions/track`, while the
+  Jira CLI backend currently no-ops and logs when debug mode is enabled.
 
-Both calls catch and log transient failures through `Environment.debug`, never surfacing credentials, never raising
-exceptions to the CLI unless the response indicates a deterministic error (e.g. HTTP 4xx ≠ 404).
+All implementations catch and log transient failures through `Environment.debug`, ensuring Git invocations keep running
+even when dependencies are unavailable.
 
 ## Configuration Surface
 
 Key settings from `Config`:
 
 - `branchPattern` – regex with a named capture `ticket` that extracts the ticket identifier from branch names.
+- `external` – integration descriptor (`rest` with base URL/auth or `jira_cli` with executable/env overrides).
 - `enforcement.branchPolicy` / `.statusCheck` – `WARN`, `BLOCK`, or `OFF` mode per interceptor.
 - `statusRules` – allowed ticket statuses for commit/push operations.
 - `trackingEnabled` – disables session tracking when `false`.
