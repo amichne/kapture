@@ -11,4 +11,7 @@ dependencies {
     api("io.ktor:ktor-client-content-negotiation:2.3.12")
     api("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
 
+    testImplementation("io.ktor:ktor-client-mock:2.3.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("io.mockk:mockk:1.13.14")
 }
