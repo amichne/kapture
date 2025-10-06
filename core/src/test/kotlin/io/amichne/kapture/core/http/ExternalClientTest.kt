@@ -138,6 +138,15 @@ class ExternalClientTest {
             lastSessionSnapshot = snapshot
         }
 
+        override fun createSubtask(parentId: String, title: String?) =
+            io.amichne.kapture.core.http.adapter.SubtaskCreationResult.Failure("Not implemented")
+
+        override fun transitionIssue(issueId: String, targetStatus: String) =
+            io.amichne.kapture.core.http.adapter.TransitionResult.Failure("Not implemented")
+
+        override fun getIssueDetails(issueId: String) =
+            io.amichne.kapture.core.http.adapter.IssueDetailsResult.Failure("Not implemented")
+
         override fun close() {
             closeCallCount++
         }

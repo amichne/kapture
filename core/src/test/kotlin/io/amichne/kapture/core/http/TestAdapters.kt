@@ -1,6 +1,9 @@
 package io.amichne.kapture.core.http
 
 import io.amichne.kapture.core.http.adapter.Adapter
+import io.amichne.kapture.core.http.adapter.SubtaskCreationResult
+import io.amichne.kapture.core.http.adapter.TransitionResult
+import io.amichne.kapture.core.http.adapter.IssueDetailsResult
 import io.amichne.kapture.core.model.SessionSnapshot
 
 /**
@@ -22,6 +25,21 @@ class MockAdapter(
         calls.add(AdapterCall.TrackSession(snapshot))
     }
 
+    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult {
+        calls.add(AdapterCall.CreateSubtask(parentId, title))
+        return SubtaskCreationResult.Success("${parentId}-1")
+    }
+
+    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult {
+        calls.add(AdapterCall.TransitionIssue(issueId, targetStatus))
+        return TransitionResult.Success
+    }
+
+    override fun getIssueDetails(issueId: String): IssueDetailsResult {
+        calls.add(AdapterCall.GetIssueDetails(issueId))
+        return IssueDetailsResult.Success(issueId, "Test summary", "Test description", null)
+    }
+
     override fun close() {
         calls.add(AdapterCall.Close)
     }
@@ -33,6 +51,9 @@ class MockAdapter(
     sealed class AdapterCall {
         data class GetTicketStatus(val ticketId: String) : AdapterCall()
         data class TrackSession(val snapshot: SessionSnapshot) : AdapterCall()
+        data class CreateSubtask(val parentId: String, val title: String?) : AdapterCall()
+        data class TransitionIssue(val issueId: String, val targetStatus: String) : AdapterCall()
+        data class GetIssueDetails(val issueId: String) : AdapterCall()
         data object Close : AdapterCall()
     }
 }
@@ -49,6 +70,15 @@ class FailingAdapter(
     override fun trackSession(snapshot: SessionSnapshot) {
         // No-op for failing adapter
     }
+
+    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult =
+        SubtaskCreationResult.Failure(errorMessage)
+
+    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult =
+        TransitionResult.Failure(errorMessage)
+
+    override fun getIssueDetails(issueId: String): IssueDetailsResult =
+        IssueDetailsResult.Failure(errorMessage)
 
     override fun close() {
         // No-op
@@ -83,6 +113,17 @@ class StatefulAdapter : Adapter {
     override fun trackSession(snapshot: SessionSnapshot) {
         // No-op for stateful adapter
     }
+
+    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult =
+        SubtaskCreationResult.Success("${parentId}-1")
+
+    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult {
+        ticketStatuses[issueId] = targetStatus
+        return TransitionResult.Success
+    }
+
+    override fun getIssueDetails(issueId: String): IssueDetailsResult =
+        IssueDetailsResult.Success(issueId, "Test summary", "Test description", null)
 
     override fun close() {
         // No-op

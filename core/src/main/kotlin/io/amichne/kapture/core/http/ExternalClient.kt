@@ -8,7 +8,7 @@ import io.amichne.kapture.core.http.adapter.RestAdapter
 import kotlinx.serialization.json.Json
 
 open class ExternalClient<A : Adapter> protected constructor(
-    protected val adapter: A
+    val adapter: A
 ) : AutoCloseable {
     override fun close() {
         adapter.close()

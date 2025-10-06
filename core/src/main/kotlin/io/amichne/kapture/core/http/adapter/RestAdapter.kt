@@ -94,6 +94,21 @@ class RestAdapter(
         }
     }
 
+    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult {
+        Environment.debug { "REST adapter does not fully support subtask creation; use jira-cli adapter" }
+        return SubtaskCreationResult.Failure("Not implemented for REST adapter")
+    }
+
+    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult {
+        Environment.debug { "REST adapter does not fully support issue transitions; use jira-cli adapter" }
+        return TransitionResult.Failure("Not implemented for REST adapter")
+    }
+
+    override fun getIssueDetails(issueId: String): IssueDetailsResult {
+        Environment.debug { "REST adapter does not fully support issue details retrieval; use jira-cli adapter" }
+        return IssueDetailsResult.Failure("Not implemented for REST adapter")
+    }
+
     private fun url(path: String): String {
         val normalizedBase = integration.baseUrl.removeSuffix("/")
         val normalizedPath = if (path.startsWith("/")) path else "/$path"

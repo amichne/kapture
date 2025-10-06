@@ -2,6 +2,9 @@ package io.amichne.kapture.interceptors
 
 import io.amichne.kapture.core.config.Config
 import io.amichne.kapture.core.http.adapter.Adapter
+import io.amichne.kapture.core.http.adapter.SubtaskCreationResult
+import io.amichne.kapture.core.http.adapter.TransitionResult
+import io.amichne.kapture.core.http.adapter.IssueDetailsResult
 import io.amichne.kapture.core.http.ExternalClient
 import io.amichne.kapture.core.http.TicketLookupResult
 import io.amichne.kapture.core.model.Invocation
@@ -23,6 +26,9 @@ class BranchPolicyInterceptorTest {
         val client = ExternalClient.wrap(object : Adapter {
             override fun getTicketStatus(ticketId: String): TicketLookupResult = TicketLookupResult.NotFound
             override fun trackSession(snapshot: SessionSnapshot) {}
+            override fun createSubtask(parentId: String, title: String?) = SubtaskCreationResult.Failure("Not implemented")
+            override fun transitionIssue(issueId: String, targetStatus: String) = TransitionResult.Failure("Not implemented")
+            override fun getIssueDetails(issueId: String) = IssueDetailsResult.Failure("Not implemented")
             override fun close() {}
         })
 

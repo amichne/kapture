@@ -19,7 +19,7 @@ data class Config(
     val sessionTrackingIntervalMs: Long = 300_000,
     val ticketSystem: String = "jira",
     val localStateRoot: String = System.getenv("KAPTURE_LOCAL_STATE")
-                                 ?: "${System.getProperty("user.home")}/.kapture/state"
+                                 ?: "${System.getProperty("user.home")}/.kapture"
 ) {
     @Serializable
     data class Enforcement(

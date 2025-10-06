@@ -77,28 +77,55 @@ private fun runKaptureCommand(
     config: Config,
     realGit: String
 ) {
-    when (args.firstOrNull()) {
-        "status" -> {
-            println("Kapture:")
-            println("  real git: $realGit")
-            val externalDescription = when (val ext = config.external) {
-                is ExternalIntegration.Rest ->
-                    "REST API (${ext.baseUrl})"
-                is ExternalIntegration.JiraCli ->
-                    "jira-cli (${ext.executable})"
+    val workDir = File(System.getProperty("user.dir"))
+    val env = Environment.full()
+
+    ExternalClient.from(config.external).use { client ->
+        when (args.firstOrNull()) {
+            "status" -> {
+                println("Kapture:")
+                println("  real git: $realGit")
+                val externalDescription = when (val ext = config.external) {
+                    is ExternalIntegration.Rest ->
+                        "REST API (${ext.baseUrl})"
+                    is ExternalIntegration.JiraCli ->
+                        "jira-cli (${ext.executable})"
+                }
+                println("  external integration: $externalDescription")
+                println("  tracking enabled: ${config.trackingEnabled}")
             }
-            println("  external integration: $externalDescription")
-            println("  tracking enabled: ${config.trackingEnabled}")
-        }
 
-        "help", null -> {
-            println("Available kapture commands:")
-            println("  status    Show resolved git binary and configuration summary")
-        }
+            "subtask" -> {
+                WorkflowCommands.executeSubtask(args.drop(1), config, client)
+            }
 
-        else -> {
-            System.err.println("Unknown kapture command: ${args.first()}\nTry 'git kapture help'.")
-            exitProcess(1)
+            "branch" -> {
+                WorkflowCommands.executeBranch(args.drop(1), config, workDir, env, client)
+            }
+
+            "pr" -> {
+                WorkflowCommands.executePullRequest(args.drop(1), config, workDir, env, client)
+            }
+
+            "merge" -> {
+                WorkflowCommands.executeMerge(args.drop(1), config, workDir, env, client)
+            }
+
+            "help", null -> {
+                println("Available kapture commands:")
+                println("  status     Show resolved git binary and configuration summary")
+                println("")
+                println("Workflow automation:")
+                println("  subtask    Create a subtask under a parent story")
+                println("  branch     Create a branch and transition subtask to In Progress")
+                println("  pr         Create a pull request and transition to Code Review")
+                println("  merge      Merge PR and transition subtask to Closed")
+            }
+
+            else -> {
+                System.err.println("Unknown kapture command: ${args.first()}\nTry 'git kapture help'.")
+                exitProcess(1)
+            }
         }
     }
 }

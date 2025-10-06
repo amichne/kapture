@@ -57,6 +57,152 @@ internal class JiraCliAdapter(
         Environment.debug { "jira-cli integration does not support session tracking; skipping." }
     }
 
+    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult {
+        val parentKey = JiraIssueKey(parentId)
+        if (parentKey.isBlank) return SubtaskCreationResult.Failure("Parent ID cannot be blank")
+
+        // First, validate parent status
+        val parentStatus = getTicketStatus(parentId)
+        val allowedStatuses = setOf("Ready for Dev", "In Progress", "READY_FOR_DEV", "IN_PROGRESS")
+
+        when (parentStatus) {
+            is TicketLookupResult.Found -> {
+                val normalizedStatus = parentStatus.status.replace(" ", "_").uppercase()
+                if (!allowedStatuses.any { it.replace(" ", "_").uppercase() == normalizedStatus }) {
+                    return SubtaskCreationResult.Failure(
+                        "Parent issue ${parentId} must be in 'Ready for Dev' or 'In Progress' status, currently: ${parentStatus.status}"
+                    )
+                }
+
+                // Auto-transition to "In Progress" if currently "Ready for Dev"
+                if (normalizedStatus.contains("READY")) {
+                    val transitionResult = transitionIssue(parentId, "In Progress")
+                    if (transitionResult is TransitionResult.Failure) {
+                        Environment.debug { "Failed to auto-transition parent to In Progress: ${transitionResult.message}" }
+                    }
+                }
+            }
+            TicketLookupResult.NotFound -> return SubtaskCreationResult.Failure("Parent issue ${parentId} not found")
+            is TicketLookupResult.Error -> return SubtaskCreationResult.Failure("Failed to check parent status: ${parentStatus.message}")
+        }
+
+        val command = buildCreateSubtaskCommand(parentKey, title)
+        val result = Exec.capture(
+            cmd = command,
+            env = integration.environment,
+            timeoutSeconds = integration.timeoutSeconds
+        )
+
+        if (result.exitCode != 0) {
+            Environment.debug {
+                "jira-cli subtask creation failed with exit code ${result.exitCode}: ${result.stderr}"
+            }
+            return SubtaskCreationResult.Failure("jira-cli exit ${result.exitCode}: ${result.stderr}")
+        }
+
+        return parseSubtaskCreationResponse(JiraCliOutput(result.stdout))
+    }
+
+    override fun transitionIssue(issueId: String, targetStatus: String): TransitionResult {
+        val issueKey = JiraIssueKey(issueId)
+        if (issueKey.isBlank) return TransitionResult.Failure("Issue ID cannot be blank")
+
+        val command = buildTransitionCommand(issueKey, targetStatus)
+        val result = Exec.capture(
+            cmd = command,
+            env = integration.environment,
+            timeoutSeconds = integration.timeoutSeconds
+        )
+
+        if (result.exitCode != 0) {
+            Environment.debug {
+                "jira-cli transition failed with exit code ${result.exitCode}: ${result.stderr}"
+            }
+            return TransitionResult.Failure("jira-cli exit ${result.exitCode}: ${result.stderr}")
+        }
+
+        return TransitionResult.Success
+    }
+
+    override fun getIssueDetails(issueId: String): IssueDetailsResult {
+        val issueKey = JiraIssueKey(issueId)
+        if (issueKey.isBlank) return IssueDetailsResult.Failure("Issue ID cannot be blank")
+
+        val command = buildCommand(issueKey)
+        val result = Exec.capture(
+            cmd = command,
+            env = integration.environment,
+            timeoutSeconds = integration.timeoutSeconds
+        )
+
+        if (result.exitCode != 0) {
+            Environment.debug {
+                "jira-cli returned ${result.exitCode} for ${issueKey.value}: ${result.stderr}"
+            }
+            return IssueDetailsResult.Failure("jira-cli exit ${result.exitCode}")
+        }
+
+        return parseIssueDetails(JiraCliOutput(result.stdout))
+    }
+
+    private fun buildCreateSubtaskCommand(parentKey: JiraIssueKey, title: String?): List<String> {
+        val executable = JiraCliExecutable(integration.executable.ifBlank { JiraCliDefaults.EXECUTABLE })
+        val baseCommand = mutableListOf(
+            executable.value,
+            JiraCliCommand.ISSUE.token,
+            JiraCliCommand.CREATE.token,
+            "--type", "Sub-task",
+            "--parent", parentKey.value
+        )
+
+        title?.let {
+            baseCommand.add("--summary")
+            baseCommand.add(it)
+            baseCommand.add("--no-input")
+        }
+
+        return baseCommand
+    }
+
+    private fun buildTransitionCommand(issueKey: JiraIssueKey, targetStatus: String): List<String> {
+        val executable = JiraCliExecutable(integration.executable.ifBlank { JiraCliDefaults.EXECUTABLE })
+        return listOf(
+            executable.value,
+            JiraCliCommand.ISSUE.token,
+            JiraCliCommand.MOVE.token,
+            issueKey.value,
+            targetStatus,
+            "--no-input"
+        )
+    }
+
+    private fun parseSubtaskCreationResponse(output: JiraCliOutput): SubtaskCreationResult = try {
+        val root: JsonElement = json.parseToJsonElement(output.value)
+        val key = root.jsonObject[JiraCliIssueField.KEY.key]?.jsonPrimitive?.content
+            ?: return SubtaskCreationResult.Failure("No key field in response")
+        SubtaskCreationResult.Success(key)
+    } catch (throwable: Exception) {
+        SubtaskCreationResult.Failure(throwable.message ?: "Failed to parse response")
+    }
+
+    private fun parseIssueDetails(output: JiraCliOutput): IssueDetailsResult = try {
+        val root: JsonElement = json.parseToJsonElement(output.value)
+        val key = root.jsonObject[JiraCliIssueField.KEY.key]?.jsonPrimitive?.content
+            ?: return IssueDetailsResult.Failure("No key field in response")
+
+        val fields = root.jsonObject[JiraCliIssueField.FIELDS.key]?.jsonObject
+            ?: return IssueDetailsResult.Failure("No fields in response")
+
+        val summary = fields[JiraCliIssueField.SUMMARY.key]?.jsonPrimitive?.content ?: ""
+        val description = fields[JiraCliIssueField.DESCRIPTION.key]?.jsonPrimitive?.content ?: ""
+        val parentKey = fields[JiraCliIssueField.PARENT.key]?.jsonObject
+            ?.get(JiraCliIssueField.KEY.key)?.jsonPrimitive?.content
+
+        IssueDetailsResult.Success(key, summary, description, parentKey)
+    } catch (throwable: Exception) {
+        IssueDetailsResult.Failure(throwable.message ?: "Failed to parse issue details")
+    }
+
     private fun buildCommand(issueKey: JiraIssueKey): List<String> {
         val executable = JiraCliExecutable(integration.executable.ifBlank { JiraCliDefaults.EXECUTABLE })
         return listOf(
@@ -90,7 +236,9 @@ internal class JiraCliAdapter(
 
 private enum class JiraCliCommand(val token: String) {
     ISSUE("issue"),
-    VIEW("view")
+    VIEW("view"),
+    CREATE("create"),
+    MOVE("move")
 }
 
 private enum class JiraCliOption(val flag: String) {
@@ -104,7 +252,11 @@ private enum class JiraCliOutputFormat(val token: String) {
 private enum class JiraCliIssueField(val key: String) {
     FIELDS("fields"),
     STATUS("status"),
-    NAME("name")
+    NAME("name"),
+    KEY("key"),
+    SUMMARY("summary"),
+    DESCRIPTION("description"),
+    PARENT("parent")
 }
 
 private enum class JiraCliFailure {
