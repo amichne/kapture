@@ -1,15 +1,27 @@
 plugins {
-    `kotlin-dsl`
+    kotlin("jvm") version "2.0.0" apply false
+    kotlin("plugin.serialization") version "2.0.0" apply false
+    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
 }
 
-kotlin {
-    jvmToolchain(21)
+allprojects {
+    repositories {
+        mavenCentral()
+    }
 }
 
-dependencies {
-//    implementation()
-}
+subprojects {
+    apply(plugin = "org.jetbrains.kotlin.jvm")
 
-repositories {
-    mavenCentral()
+    kotlin {
+        jvmToolchain(21)
+    }
+
+    dependencies {
+        testImplementation(kotlin("test"))
+    }
+
+    tasks.test {
+        useJUnitPlatform()
+    }
 }
