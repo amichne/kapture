@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "2.2.0"
     kotlin("plugin.serialization") version "2.2.0"
     id("com.gradleup.shadow") version "9.2.2"
+    id("org.graalvm.buildtools.native") version "0.10.4" apply false
 }
 
 allprojects {
