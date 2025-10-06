@@ -16,7 +16,7 @@ import kotlin.system.exitProcess
  * Workflow commands orchestrate the full Jira + Git + GitHub flow:
  * - subtask: Create subtask and validate parent status
  * - branch: Create branch and transition subtask to In Progress
- * - pr: Create pull request and transition to Code Review
+ * - review: Create pull request and transition to Code Review
  * - merge: Merge branch and close subtask
  */
 object WorkflowCommands {
@@ -102,7 +102,7 @@ object WorkflowCommands {
         }
     }
 
-    fun executePullRequest(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
+    fun executeReview(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
         // Get current branch and extract ticket
         val currentBranchResult = Exec.capture(
             cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),

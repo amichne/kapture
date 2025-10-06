@@ -54,7 +54,8 @@ jobs:
           cache: gradle
 
       - name: Install native-image component
-        run: gu install native-image
+        run: |
+          "${JAVA_HOME}/bin/gu" install native-image
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew

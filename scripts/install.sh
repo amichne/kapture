@@ -5,7 +5,7 @@ set -euo pipefail
 # verifies its checksum when available, and installs a launcher script alongside it.
 
 REPO="amichne/kapture"
-INSTALL_DIR_DEFAULT="$HOME/.local/share/kapture"
+INSTALL_DIR_DEFAULT="$HOME/.local/kapture"
 BIN_DIR_DEFAULT="$HOME/.local/bin"
 VERSION=""
 FORCE=false

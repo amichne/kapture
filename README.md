@@ -1,116 +1,293 @@
 # Kapture
 
-Kapture is a Kotlin-based Git wrapper that inserts policy, status, and telemetry interceptors in front of the real `git`
-executable. It resolves the genuine Git binary on each invocation, evaluates organisational rules (branch naming,
-ticket status, etc.), and finally forwards the original command to Git. Teams can ship a single self-contained binary or
-fat JAR that applies consistent governance to every workstation.
+Kapture is a minimally intrusive Jira workflow orchestrator, driven by `git`, automating task management as you navigate the development cycle, from created to closed.
 
-## Highlights
+### Git under the hood
+Kapture is a Kotlin-based Git wrapper that inserts policy, status, and telemetry interceptors in front of the real `git`
+executable. It resolves the genuine Git binary on each invocation, evaluates configurable rules (branch naming,
+ticket status, etc.), and finally forwards the original command to Git.
+
+Kapture provides a robust manner to apply consistent governance regarding ticket management,
+across entire organizations, without disrupting workflows or adding developer overhead.
+
+
+ 
+### Highlights
 
 - Branch name policy checks with configurable warning/blocking behaviour
 - Remote ticket status lookups before `commit`/`push` via the pluggable `ExternalClient`
-- Session tracking to record command activity when `trackingEnabled` is on
-- JVM distribution (Shadow JAR) *and* GraalVM native image build for zero-dependency installs
-- Extensible interceptor pipeline for custom compliance logic
+- Git event tracking to record events (_when `trackingEnabled` is on_)
+- Shadow JAR distribution *and* GraalVM native image build, for zero-dependency installs
+- Extensible interceptor pipeline allow registering custom logic without disturbing existing rules
 
-## Quick Start
 
-### Prerequisites
+## Quick Start 
 
-- JDK 21 for development builds (Temurin, GraalVM, Corretto…)
-- Gradle wrapper ships with the repository (`./gradlew`)
-- Optional: GraalVM 21 with the `native-image` component if you want the native binary
+1. **Install Kapture** using the provided `scripts/install.sh` or download the latest release assets (`kapture.jar`, `kapture-linux-x64`).
+2. **Configure credentials** by enabling the `jiraCli` adapter in your Kapture config and authenticating the GitHub CLI (`gh auth login`).
+3. **Bootstrap workflow** in a feature repository:
+   ```bash
+   git kapture subtask PROJ-123 "Describe the work"
+   git kapture branch PROJ-456
+   # make changes, commit
+   git kapture review
+   git kapture merge
+   ```
 
-### Clone & Build
+These commands create a Jira subtask, spin up a Git branch, open a GitHub pull request, and close the subtask once merged.
 
+## Overview
+
+The workflow automation implements the following flow:
+
+1. **Subtask Creation** - Create a subtask under a parent story with automatic status validation
+2. **Branch Creation** - Create a git branch and transition the subtask to "In Progress"
+3. **Pull Request Creation** - Create a GitHub PR with Jira details and transition to "Code Review"
+4. **Branch Merge** - Merge the PR and transition the subtask to "Closed"
+
+## Prerequisites
+
+- Kapture configured with `jira-cli` integration
+- GitHub CLI (`gh`) installed and authenticated
+- Jira credentials configured (via `JIRA_API_TOKEN` environment variable)
+
+> Refer to the [Configuration](./docs/configuration.md) documentation for detailed configuration information.
+
+
+## Commands
+
+### 1. Create a Subtask
+
+**Usage**
 ```bash
-./gradlew shadowJar
+git kapture subtask <PARENT-ID> [subtask-title]
 ```
 
-The self-contained artefact is written to `cli/build/libs/kapture.jar`.
+**Inputs**
+- `PARENT-ID`: Required Jira ticket key for the parent story/epic.
+- `subtask-title`: Optional summary for the new subtask. Defaults to Jira template if omitted.
 
-Run the wrapper with:
+**Outputs**
+- Standard out: Progress log with created subtask key.
+- Exit code `0`: Subtask created successfully.
+- Exit code `1`: Validation failure (missing parent, disallowed status) or Jira CLI error.
 
+**Example (success)**
 ```bash
-java -jar cli/build/libs/kapture.jar status
+$ git kapture subtask PROJ-123 "Implement user authentication"
+Creating subtask under parent PROJ-123...
+✓ Created subtask: PROJ-124
+  Parent: PROJ-123
 ```
 
-(Use `--args="..."` when executing via `./gradlew run`.)
+**Example (failure)**
+```bash
+$ git kapture subtask PROJ-999
+Creating subtask under parent PROJ-999...
+✗ Failed to create subtask: Parent issue not found
+```
 
-### Install as a Git shim (JVM build)
+---
 
-1. Find the path to your real Git binary: `which git`.
-2. Copy the fat JAR somewhere permanent (e.g. `/usr/local/lib/kapture/kapture.jar`).
-3. Create a lightweight launcher script earlier on your `PATH`, **without** overwriting the system Git:
-   ```bash
-   #!/usr/bin/env bash
-   export REAL_GIT="/usr/bin/git"      # replace with the path from step 1
-   exec java -jar /usr/local/lib/kapture/kapture.jar "$@"
-   ```
-   Save it as `~/bin/git`, mark executable (`chmod +x ~/bin/git`), and ensure `~/bin` precedes the system Git directory
-   in `PATH`.
-4. Run your normal Git commands (`git status`, `git push`, …). Kapture forwards to the real Git binary after running
-   its interceptors.
+### 2. Create a Branch
 
-### Build and Install the Native Binary
+**Usage**
+```bash
+git kapture branch <SUBTASK-ID>
+```
 
-1. Install GraalVM 21 and enable the native-image tool:
-   ```bash
-   gu install native-image
-   ```
-2. From the project root build the native image:
-   ```bash
-   ./gradlew :cli:nativeCompile
-   ```
-   The binary lands at `cli/build/native/nativeCompile/kapture` (or `kapture.exe` on Windows).
-3. Drop the binary onto your `PATH` (e.g. `/usr/local/bin/kapture`) and reuse the shim listed above, swapping the
-   `java -jar …` invocation for the native binary path.
+**Inputs**
+- `SUBTASK-ID`: Required Jira subtask key. Must match the configured branch pattern and exist in Jira.
 
-## Usage
+**Outputs**
+- Standard out: Branch name and transition status.
+- Git branch: Created locally via `git checkout -b` following your `branchPattern`.
+- Exit code `0`: Branch created and Jira issue transitioned to "In Progress".
+- Exit code `1`: Subtask missing, status disallowed, git branch command failed, or Jira transition error.
 
-- Everyday Git commands work unchanged (`git status`, `git commit -m`, `git push`). Kapture inspects the arguments to
-  decide which interceptors to execute, then delegates to the resolved Git binary.
-- Call the built-in helper at any time: `git kapture status` prints the resolved Git path and key configuration flags.
-- `KAPTURE_DEBUG=1` increases logging (emitted to stderr) and preserves interceptor diagnostics.
-- To supply configuration, create `~/.kapture/state/config.json` or point `KAPTURE_CONFIG` to a JSON file – see
-  [`docs/architecture.md`](docs/architecture.md) for the schema. External integrations are polymorphic:
+**Example (success)**
+```bash
+$ git kapture branch PROJ-124
+Creating branch: PROJ-124/dev
+✓ Branch created: PROJ-124/dev
+✓ Subtask PROJ-124 → In Progress
+```
 
-  - REST API with bearer or Jira PAT auth
+**Example (failure)**
+```bash
+$ git kapture branch PROJ-555
+Creating branch: PROJ-555/dev
+✗ Subtask PROJ-555 must be in 'Ready for Dev' status
+  Current status: Done
+```
 
-    ```json
-    {
-      "external": {
-        "type": "rest",
-        "baseUrl": "https://your-jira.example.com/rest/api/3",
-        "auth": { "type": "jira_pat", "email": "you@example.com", "token": "<pat>" }
-      }
-    }
-    ```
+---
 
-  - Jira CLI wrapper with environment-provided credentials
+### 3. Create a Review
 
-    ```json
-    {
-      "external": {
-        "type": "jira_cli",
-        "executable": "jira",
-        "environment": {
-          "JIRA_API_TOKEN": "<pat>",
-          "JIRA_EMAIL": "you@example.com"
-        }
-      }
-    }
-    ```
+**Usage**
+```bash
+git kapture review
+```
 
-## Troubleshooting
+**Inputs**
+- Current git branch: Must contain a ticket key matching `branchPattern`.
+- Git working tree: Must be clean enough for `git push` and `gh pr create` to succeed.
+- Environment: GitHub CLI authenticated; Jira credentials valid.
 
-- Set `REAL_GIT` when the automatic resolver cannot find the real binary (WSL, custom installations, CI).
-- Use `--version`, `--help`, completion flags, and `git config` unaffected; the wrapper fast-paths these commands.
-- Network calls to your ticket system honour `trackingEnabled = false`; no session data is written in that mode.
+**Outputs**
+- Standard out: Push status, PR creation status, Jira transition logs, PR URL.
+- Exit code `0`: Branch pushed, PR opened, subtask transitioned to "Code Review".
+- Exit code `1`: Ticket extraction failure, status invalid, push/PR creation error, or Jira transition error.
 
-## Documentation Map
+**Example (success)**
+```bash
+$ git kapture review
+Pushing branch to remote...
+Creating pull request...
+Transitioning PROJ-124 to 'Code Review'...
+✓ Pull request created
+✓ Subtask PROJ-124 → Code Review
 
-- [`docs/architecture.md`](docs/architecture.md) – module breakdown, interceptor flow, HTTP integration
-- [`docs/contributing.md`](docs/contributing.md) – developing new features, extending interceptors, testing standards
+https://github.com/org/repo/pull/42
+```
 
-For repository conventions (style, testing, security), see `AGENTS.md`.
+**Example (failure)**
+```bash
+$ git kapture review
+✗ Current branch 'main' does not contain a valid ticket ID
+  Expected pattern: ^(?<ticket>[A-Z]+-\d+)/[a-z0-9._-]+$
+```
+
+**Pull Request Body Template**
+```markdown
+<details>
+<summary>📋 Jira Ticket Details</summary>
+
+**Ticket:** PROJ-124
+**Summary:** Implement user authentication
+
+_Full issue description from Jira_
+</details>
+
+<details>
+<summary>🔗 Related Pull Requests</summary>
+
+- #40 - PROJ-125: Add login UI
+- #41 - PROJ-126: Update user model
+</details>
+```
+
+---
+
+### 4. Merge Pull Request
+
+**Usage**
+```bash
+git kapture merge
+```
+
+**Inputs**
+- Current git branch: Must still reference the feature branch that opened the PR.
+- GitHub CLI: Must have an open PR associated with the branch.
+- Jira: Subtask must be in "Code Review" status.
+
+**Outputs**
+- Standard out: Merge status and Jira transition result.
+- Exit code `0`: PR merged (squash + auto) and subtask transitioned to "Done".
+- Exit code `1`: Ticket missing/invalid, merge command failure, or Jira transition failure.
+
+**Example (success)**
+```bash
+$ git kapture merge
+Merging pull request...
+Transitioning PROJ-124 to 'Closed'...
+✓ Pull request merged
+✓ Subtask PROJ-124 → Closed
+```
+
+**Example (failure)**
+```bash
+$ git kapture merge
+Merging pull request...
+✗ Failed to merge pull request: pull request not found for branch PROJ-124/dev
+```
+
+## Complete Workflow Example
+<details>
+
+<summary>Expand</summary>
+
+```bash
+# 1. Create a subtask for the story
+$ git kapture subtask STORY-100 "Add password reset feature"
+✓ Created subtask: STORY-101
+
+# 2. Create a branch and start work
+$ git kapture branch STORY-101
+✓ Branch created: STORY-101/dev
+✓ Subtask STORY-101 → In Progress
+
+# 3. Make changes and commit
+$ echo "code" >> src/reset.ts
+$ git add .
+$ git commit -m "Implement password reset"
+
+# 4. Create pull request
+$ git kapture review
+✓ Pull request created
+✓ Subtask STORY-101 → Code Review
+
+# 5. After approval, merge the PR
+$ git kapture merge
+✓ Pull request merged
+✓ Subtask STORY-101 → Closed
+```
+
+
+</details>
+
+
+## Status Transitions
+
+The workflow enforces the following status transitions:
+
+```
+Parent Story:
+Ready for Dev → In Progress (auto-transition on subtask creation)
+
+Subtask:
+Ready for Dev → In Progress (on branch creation)
+In Progress → Code Review (on PR creation)
+Code Review → Done (on PR merge)
+```
+
+## Error Handling
+
+All workflow commands include comprehensive validation:
+
+- **Status Checks**: Ensures issues are in the correct state before proceeding
+- **Ticket Existence**: Validates that referenced tickets exist in Jira
+- **Branch Name Validation**: Ensures branch names follow the configured pattern
+- **Git Operations**: Proper error handling for all git/GitHub operations
+
+Error messages include:
+
+- ✗ marks for failures
+- ✓ marks for successes
+- ⚠ marks for partial successes (e.g., PR created but transition failed)
+ 
+## Architecture
+
+Workflow commands are implemented in:
+
+- [Command orchestration](./cli/src/main/kotlin/io/amichne/kapture/cli/WorkflowCommands.kt)
+- [Interface definition](./core/src/main/kotlin/io/amichne/kapture/core/http/adapter/Adapter.kt)
+- [Jira CLI integration](./core/src/main/kotlin/io/amichne/kapture/core/http/adapter/JiraCliAdapter.kt)
+
+
+## Upcoming functionality
+
+- Status names updated to be parsed via configuration and mapped to semantic category
+- REST adapter integration completion, to allow dynamic workflow operations per event
+- Related PRs referencing via JQL query implementation

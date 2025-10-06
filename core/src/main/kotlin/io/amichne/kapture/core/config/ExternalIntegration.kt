@@ -27,7 +27,7 @@ sealed class ExternalIntegration {
      * variables can be supplied for authentication (PAT, email, site).
      */
     @Serializable
-    @SerialName("jira_cli")
+    @SerialName("jiraCli")
     data class JiraCli(
         val executable: String = "jira",
         val environment: Map<String, String> = emptyMap(),

@@ -1,6 +1,21 @@
 # Workflow Automation
 
-Kapture now includes a complete Jira workflow automation system that orchestrates the full development cycle from subtask creation through branch merge.
+Kapture is a minimally intrusive Jira workflow orchestrator, driven by `git`, automating task management as you navigate the development cycle, from created to closed.
+
+## Quick Start
+
+1. **Install Kapture** using the provided `scripts/install.sh` or download the latest release assets (`kapture.jar`, `kapture-linux-x64`).
+2. **Configure credentials** by enabling the `jiraCli` adapter in your Kapture config and authenticating the GitHub CLI (`gh auth login`).
+3. **Bootstrap workflow** in a feature repository:
+   ```bash
+   git kapture subtask PROJ-123 "Describe the work"
+   git kapture branch PROJ-456
+   # make changes, commit
+   git kapture review
+   git kapture merge
+   ```
+
+These commands create a Jira subtask, spin up a Git branch, open a GitHub pull request, and close the subtask once merged.
 
 ## Overview
 
@@ -21,17 +36,21 @@ The workflow automation implements the following flow:
 
 ### 1. Create a Subtask
 
+**Usage**
 ```bash
 git kapture subtask <PARENT-ID> [subtask-title]
 ```
 
-**Behavior:**
-- Validates that parent issue exists and is in "Ready for Dev" or "In Progress" status
-- Auto-transitions parent to "In Progress" if currently "Ready for Dev"
-- Creates a new subtask linked to the parent
-- Returns the newly created subtask key
+**Inputs**
+- `PARENT-ID`: Required Jira ticket key for the parent story/epic.
+- `subtask-title`: Optional summary for the new subtask. Defaults to Jira template if omitted.
 
-**Example:**
+**Outputs**
+- Standard out: Progress log with created subtask key.
+- Exit code `0`: Subtask created successfully.
+- Exit code `1`: Validation failure (missing parent, disallowed status) or Jira CLI error.
+
+**Example (success)**
 ```bash
 $ git kapture subtask PROJ-123 "Implement user authentication"
 Creating subtask under parent PROJ-123...
@@ -39,24 +58,32 @@ Creating subtask under parent PROJ-123...
   Parent: PROJ-123
 ```
 
-**Exit Codes:**
-- `0` - Success
-- `1` - Validation failure or creation error
+**Example (failure)**
+```bash
+$ git kapture subtask PROJ-999
+Creating subtask under parent PROJ-999...
+✗ Failed to create subtask: Parent issue not found
+```
 
 ---
 
 ### 2. Create a Branch
 
+**Usage**
 ```bash
 git kapture branch <SUBTASK-ID>
 ```
 
-**Behavior:**
-- Validates that subtask exists and is in "Ready for Dev" status
-- Creates a new git branch following the configured `branchPattern`
-- Transitions the subtask to "In Progress"
+**Inputs**
+- `SUBTASK-ID`: Required Jira subtask key. Must match the configured branch pattern and exist in Jira.
 
-**Example:**
+**Outputs**
+- Standard out: Branch name and transition status.
+- Git branch: Created locally via `git checkout -b` following your `branchPattern`.
+- Exit code `0`: Branch created and Jira issue transitioned to "In Progress".
+- Exit code `1`: Subtask missing, status disallowed, git branch command failed, or Jira transition error.
+
+**Example (success)**
 ```bash
 $ git kapture branch PROJ-124
 Creating branch: PROJ-124/dev
@@ -64,32 +91,36 @@ Creating branch: PROJ-124/dev
 ✓ Subtask PROJ-124 → In Progress
 ```
 
-**Exit Codes:**
-- `0` - Success
-- `1` - Validation failure, branch creation error, or transition failure
+**Example (failure)**
+```bash
+$ git kapture branch PROJ-555
+Creating branch: PROJ-555/dev
+✗ Subtask PROJ-555 must be in 'Ready for Dev' status
+  Current status: Done
+```
 
 ---
 
-### 3. Create a Pull Request
+### 3. Create a Review
 
+**Usage**
 ```bash
-git kapture pr
+git kapture review
 ```
 
-**Behavior:**
-- Extracts subtask ID from current branch name (using `branchPattern`)
-- Validates that subtask is in "In Progress" status
-- Fetches issue details from Jira (summary, description)
-- Pushes current branch to remote
-- Creates GitHub PR with:
-  - Title from Jira issue summary
-  - Collapsible Jira ticket details section
-  - Collapsible related PRs section (sibling subtasks)
-- Transitions subtask to "Code Review"
+**Inputs**
+- Current git branch: Must contain a ticket key matching `branchPattern`.
+- Git working tree: Must be clean enough for `git push` and `gh pr create` to succeed.
+- Environment: GitHub CLI authenticated; Jira credentials valid.
 
-**Example:**
+**Outputs**
+- Standard out: Push status, PR creation status, Jira transition logs, PR URL.
+- Exit code `0`: Branch pushed, PR opened, subtask transitioned to "Code Review".
+- Exit code `1`: Ticket extraction failure, status invalid, push/PR creation error, or Jira transition error.
+
+**Example (success)**
 ```bash
-$ git kapture pr
+$ git kapture review
 Pushing branch to remote...
 Creating pull request...
 Transitioning PROJ-124 to 'Code Review'...
@@ -99,7 +130,14 @@ Transitioning PROJ-124 to 'Code Review'...
 https://github.com/org/repo/pull/42
 ```
 
-**Pull Request Body Format:**
+**Example (failure)**
+```bash
+$ git kapture review
+✗ Current branch 'main' does not contain a valid ticket ID
+  Expected pattern: ^(?<ticket>[A-Z]+-\d+)/[a-z0-9._-]+$
+```
+
+**Pull Request Body Template**
 ```markdown
 <details>
 <summary>📋 Jira Ticket Details</summary>
@@ -118,25 +156,26 @@ _Full issue description from Jira_
 </details>
 ```
 
-**Exit Codes:**
-- `0` - Success
-- `1` - Validation failure, push error, PR creation error, or transition failure
-
 ---
 
 ### 4. Merge Pull Request
 
+**Usage**
 ```bash
 git kapture merge
 ```
 
-**Behavior:**
-- Extracts subtask ID from current branch name
-- Validates that subtask is in "Code Review" status
-- Merges the pull request using GitHub CLI (auto-merge with squash)
-- Transitions subtask to "Done" (closed)
+**Inputs**
+- Current git branch: Must still reference the feature branch that opened the PR.
+- GitHub CLI: Must have an open PR associated with the branch.
+- Jira: Subtask must be in "Code Review" status.
 
-**Example:**
+**Outputs**
+- Standard out: Merge status and Jira transition result.
+- Exit code `0`: PR merged (squash + auto) and subtask transitioned to "Done".
+- Exit code `1`: Ticket missing/invalid, merge command failure, or Jira transition failure.
+
+**Example (success)**
 ```bash
 $ git kapture merge
 Merging pull request...
@@ -145,9 +184,12 @@ Transitioning PROJ-124 to 'Closed'...
 ✓ Subtask PROJ-124 → Closed
 ```
 
-**Exit Codes:**
-- `0` - Success
-- `1` - Validation failure, merge error, or transition failure
+**Example (failure)**
+```bash
+$ git kapture merge
+Merging pull request...
+✗ Failed to merge pull request: pull request not found for branch PROJ-124/dev
+```
 
 ---
 
@@ -185,7 +227,7 @@ Workflow commands require the `jira-cli` integration type:
 ```json
 {
   "external": {
-    "type": "jira_cli",
+    "type": "jiraCli",
     "executable": "jira",
     "environment": {
       "JIRA_API_TOKEN": "<your-token>",
@@ -213,7 +255,7 @@ $ git add .
 $ git commit -m "Implement password reset"
 
 # 4. Create pull request
-$ git kapture pr
+$ git kapture review
 ✓ Pull request created
 ✓ Subtask STORY-101 → Code Review
 
@@ -262,9 +304,9 @@ Error messages include:
 
 Workflow commands are implemented in:
 
-- `cli/src/main/kotlin/io/amichne/kapture/cli/WorkflowCommands.kt` - Command orchestration
-- `core/src/main/kotlin/io/amichne/kapture/core/http/adapter/Adapter.kt` - Interface definition
-- `core/src/main/kotlin/io/amichne/kapture/core/http/adapter/JiraCliAdapter.kt` - Jira CLI integration
+- [Command orchestration](../cli/src/main/kotlin/io/amichne/kapture/cli/WorkflowCommands.kt)
+- [Interface definition](../core/src/main/kotlin/io/amichne/kapture/core/http/adapter/Adapter.kt)
+- [Jira CLI integration](../core/src/main/kotlin/io/amichne/kapture/core/http/adapter/JiraCliAdapter.kt)
 
 New adapter methods:
 - `createSubtask(parentId, title)` - Creates a subtask

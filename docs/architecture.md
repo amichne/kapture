@@ -68,7 +68,7 @@ even when dependencies are unavailable.
 Key settings from `Config`:
 
 - `branchPattern` – regex with a named capture `ticket` that extracts the ticket identifier from branch names.
-- `external` – integration descriptor (`rest` with base URL/auth or `jira_cli` with executable/env overrides).
+- `external` – integration descriptor (`rest` with base URL/auth or `jiraCli` with executable/env overrides).
 - `enforcement.branchPolicy` / `.statusCheck` – `WARN`, `BLOCK`, or `OFF` mode per interceptor.
 - `statusRules` – allowed ticket statuses for commit/push operations.
 - `trackingEnabled` – disables session tracking when `false`.

@@ -103,8 +103,8 @@ private fun runKaptureCommand(
                 WorkflowCommands.executeBranch(args.drop(1), config, workDir, env, client)
             }
 
-            "pr" -> {
-                WorkflowCommands.executePullRequest(args.drop(1), config, workDir, env, client)
+            "review" -> {
+                WorkflowCommands.executeReview(args.drop(1), config, workDir, env, client)
             }
 
             "merge" -> {
@@ -118,7 +118,7 @@ private fun runKaptureCommand(
                 println("Workflow automation:")
                 println("  subtask    Create a subtask under a parent story")
                 println("  branch     Create a branch and transition subtask to In Progress")
-                println("  pr         Create a pull request and transition to Code Review")
+                println("  review     Create a pull request and transition to Code Review")
                 println("  merge      Merge PR and transition subtask to Closed")
             }
 
