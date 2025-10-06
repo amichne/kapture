@@ -2,14 +2,12 @@ package io.amichne.kapture.interceptors.session
 
 import io.amichne.kapture.core.config.Config
 import io.amichne.kapture.core.exec.ExecResult
+import io.amichne.kapture.core.http.adapter.Adapter
 import io.amichne.kapture.core.http.ExternalClient
 import io.amichne.kapture.core.http.TicketLookupResult
 import io.amichne.kapture.core.model.Invocation
 import io.amichne.kapture.core.model.SessionSnapshot
 import io.amichne.kapture.core.model.TimeSession
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respondOk
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -31,14 +29,13 @@ class SessionTrackingInterceptorTest {
         val config = Config(localStateRoot = tempDir.absolutePath)
         val clock = MutableClock(Instant.parse("2024-01-01T00:00:00Z"))
         val snapshots = mutableListOf<SessionSnapshot>()
-        val client = object : ExternalClient("https://example.test", apiKey = null, client = HttpClient(MockEngine) {
-            engine { addHandler { respondOk() } }
-        }) {
+        val client = ExternalClient.wrap(object : Adapter {
             override fun getTicketStatus(ticketId: String): TicketLookupResult = TicketLookupResult.Found("IN_PROGRESS")
             override fun trackSession(snapshot: SessionSnapshot) {
                 snapshots += snapshot
             }
-        }
+            override fun close() {}
+        })
         val invocation = object : Invocation(listOf("status"), "git", File("."), emptyMap()) {
             override fun captureGit(vararg gitArgs: String): ExecResult = ExecResult(0, "PROJ-9/feature", "")
         }

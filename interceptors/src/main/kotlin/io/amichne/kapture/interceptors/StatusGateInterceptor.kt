@@ -15,7 +15,7 @@ class StatusGateInterceptor : GitInterceptor {
     override fun before(
         invocation: Invocation,
         config: Config,
-        client: ExternalClient
+        client: ExternalClient<*>
     ): Int? {
         val mode = config.enforcement.statusCheck
         if (mode == Config.Enforcement.Mode.OFF) return null

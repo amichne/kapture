@@ -73,7 +73,34 @@ java -jar cli/build/libs/kapture.jar status
 - Call the built-in helper at any time: `git kapture status` prints the resolved Git path and key configuration flags.
 - `KAPTURE_DEBUG=1` increases logging (emitted to stderr) and preserves interceptor diagnostics.
 - To supply configuration, create `~/.kapture/state/config.json` or point `KAPTURE_CONFIG` to a JSON file – see
-  [`docs/architecture.md`](docs/architecture.md) for the schema.
+  [`docs/architecture.md`](docs/architecture.md) for the schema. External integrations are polymorphic:
+
+  - REST API with bearer or Jira PAT auth
+
+    ```json
+    {
+      "external": {
+        "type": "rest",
+        "baseUrl": "https://your-jira.example.com/rest/api/3",
+        "auth": { "type": "jira_pat", "email": "you@example.com", "token": "<pat>" }
+      }
+    }
+    ```
+
+  - Jira CLI wrapper with environment-provided credentials
+
+    ```json
+    {
+      "external": {
+        "type": "jira_cli",
+        "executable": "jira",
+        "environment": {
+          "JIRA_API_TOKEN": "<pat>",
+          "JIRA_EMAIL": "you@example.com"
+        }
+      }
+    }
+    ```
 
 ## Troubleshooting
 

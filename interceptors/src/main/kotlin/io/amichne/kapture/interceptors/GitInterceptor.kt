@@ -12,7 +12,7 @@ interface GitInterceptor {
     fun before(
         invocation: Invocation,
         config: Config,
-        client: ExternalClient
+        client: ExternalClient<*>
     ): Int? = null
 
     /**
@@ -24,7 +24,7 @@ interface GitInterceptor {
         invocation: Invocation,
         exitCode: Int,
         config: Config,
-        client: ExternalClient
+        client: ExternalClient<*>
     ) {
     }
 }

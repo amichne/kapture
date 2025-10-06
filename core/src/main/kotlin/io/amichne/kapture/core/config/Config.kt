@@ -10,8 +10,7 @@ import java.nio.file.Paths
 
 @Serializable
 data class Config(
-    val externalBaseUrl: String = "http://localhost:8080",
-    val apiKey: String? = null,
+    val external: ExternalIntegration = ExternalIntegration.Rest(),
     val branchPattern: String = "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$",
     val enforcement: Enforcement = Enforcement(),
     val statusRules: StatusRules = StatusRules(),
