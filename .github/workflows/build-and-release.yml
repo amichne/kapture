@@ -53,10 +53,6 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Install native-image component
-        run: |
-          "${JAVA_HOME}/bin/gu" install native-image
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
