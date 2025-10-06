@@ -7,7 +7,16 @@ import io.amichne.kapture.core.http.TicketLookupResult
 import io.amichne.kapture.core.model.Invocation
 
 class StatusGateInterceptor : GitInterceptor {
-    override fun before(invocation: Invocation, config: Config, client: ExternalClient): Int? {
+    /**
+     * Blocks commits and pushes when the current branch's ticket status fails
+     * the configured allow list, emitting WARN or ERROR messages based on the
+     * enforcement mode.
+     */
+    override fun before(
+        invocation: Invocation,
+        config: Config,
+        client: ExternalClient
+    ): Int? {
         val mode = config.enforcement.statusCheck
         if (mode == Config.Enforcement.Mode.OFF) return null
 
@@ -39,17 +48,23 @@ class StatusGateInterceptor : GitInterceptor {
         return handleViolation(mode, command, message)
     }
 
-    private fun handleViolation(mode: Config.Enforcement.Mode, command: String, message: String): Int? {
+    private fun handleViolation(
+        mode: Config.Enforcement.Mode,
+        command: String,
+        message: String
+    ): Int? {
         val exitCode = if (command == "commit") COMMIT_EXIT else PUSH_EXIT
         return when (mode) {
             Config.Enforcement.Mode.WARN -> {
                 System.err.println("[kapture] WARN: $message")
                 null
             }
+
             Config.Enforcement.Mode.BLOCK -> {
                 System.err.println("[kapture] ERROR: $message")
                 exitCode
             }
+
             Config.Enforcement.Mode.OFF -> null
         }
     }
@@ -61,7 +76,11 @@ class StatusGateInterceptor : GitInterceptor {
         return branch.takeUnless { it.isEmpty() || it == "HEAD" }
     }
 
-    private fun isStatusAllowed(command: String, status: String, rules: Config.StatusRules): Boolean {
+    private fun isStatusAllowed(
+        command: String,
+        status: String,
+        rules: Config.StatusRules
+    ): Boolean {
         return when (command) {
             "commit" -> status in rules.allowCommitWhen
             "push" -> status in rules.allowPushWhen

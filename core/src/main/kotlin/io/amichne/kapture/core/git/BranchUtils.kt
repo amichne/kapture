@@ -3,7 +3,15 @@ package io.amichne.kapture.core.git
 import java.util.regex.Pattern
 
 object BranchUtils {
-    fun extractTicket(branch: String, pattern: String): String? {
+    /**
+     * Attempts to pull a ticket identifier from the provided branch name using
+     * the supplied regex. Named group `ticket` is preferred, with the first
+     * capture group used as a fallback when the named group is absent.
+     */
+    fun extractTicket(
+        branch: String,
+        pattern: String
+    ): String? {
         val compiled = Pattern.compile(pattern)
         val matcher = compiled.matcher(branch)
         if (!matcher.find()) return null

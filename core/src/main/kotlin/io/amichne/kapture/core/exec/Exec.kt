@@ -12,6 +12,11 @@ import java.util.concurrent.TimeUnit
 object Exec {
     private const val DEFAULT_TIMEOUT_SECONDS: Long = 60
 
+    /**
+     * Launches the provided command, inheriting the current stdin/stdout/stderr
+     * so the child process behaves like a native Git invocation. Returns the
+     * observed exit code or `-1` if the process exceeded the timeout.
+     */
     fun passthrough(
         cmd: List<String>,
         workDir: File? = null,
@@ -32,6 +37,11 @@ object Exec {
         return process.exitValue()
     }
 
+    /**
+     * Executes the command while capturing stdout and stderr into memory,
+     * returning the trimmed output alongside the exit code. The process is
+     * forcibly terminated when it exceeds the supplied timeout.
+     */
     fun capture(
         cmd: List<String>,
         workDir: File? = null,
@@ -64,7 +74,10 @@ object Exec {
         )
     }
 
-    private fun applyEnvironment(processBuilder: ProcessBuilder, env: Map<String, String>) {
+    private fun applyEnvironment(
+        processBuilder: ProcessBuilder,
+        env: Map<String, String>
+    ) {
         if (env.isEmpty()) return
         val target = processBuilder.environment()
         for ((key, value) in env) {
@@ -73,4 +86,8 @@ object Exec {
     }
 }
 
-data class ExecResult(val exitCode: Int, val stdout: String, val stderr: String)
+data class ExecResult(
+    val exitCode: Int,
+    val stdout: String,
+    val stderr: String
+)

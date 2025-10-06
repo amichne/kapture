@@ -16,11 +16,13 @@ class StatusGateInterceptorTest {
     @Test
     fun `blocks commit when ticket status not allowed`() {
         val config = Config(
-            enforcement = Config.Enforcement(branchPolicy = Config.Enforcement.Mode.OFF, statusCheck = Config.Enforcement.Mode.BLOCK)
+            enforcement = Config.Enforcement(
+                branchPolicy = Config.Enforcement.Mode.OFF, statusCheck = Config.Enforcement.Mode.BLOCK
+            )
         )
         val interceptor = StatusGateInterceptor()
         val invocation = object : Invocation(listOf("commit"), "git", File("."), emptyMap()) {
-            override fun captureGit(vararg gitArgs: String): ExecResult = ExecResult(0, "PROJ-7/feature" , "")
+            override fun captureGit(vararg gitArgs: String): ExecResult = ExecResult(0, "PROJ-7/feature", "")
         }
         val client = object : ExternalClient("https://example.test", apiKey = null, client = HttpClient(MockEngine) {
             engine { addHandler { respondOk() } }

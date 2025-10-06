@@ -18,7 +18,17 @@ class SessionTrackingInterceptor(
     private val clock: Clock = Clock.System,
     private val json: Json = Json { encodeDefaults = true }
 ) : GitInterceptor {
-    override fun after(invocation: Invocation, exitCode: Int, config: Config, client: ExternalClient) {
+    /**
+     * Updates the stored session after each Git invocation, rolling a new
+     * session whenever the branch changes or the elapsed time exceeds the
+     * configured tracking interval, and optionally emitting telemetry.
+     */
+    override fun after(
+        invocation: Invocation,
+        exitCode: Int,
+        config: Config,
+        client: ExternalClient
+    ) {
         val store = SessionStore(config.localStateRoot, json)
 
         if (!config.trackingEnabled) {
@@ -60,7 +70,11 @@ class SessionTrackingInterceptor(
         return branch.takeUnless { it.isEmpty() || it == "HEAD" }
     }
 
-    private fun closeSession(session: TimeSession, end: Instant, client: ExternalClient) {
+    private fun closeSession(
+        session: TimeSession,
+        end: Instant,
+        client: ExternalClient
+    ) {
         val duration = session.durationUntil(end)
         if (duration <= 0) return
         val snapshot = SessionSnapshot(
@@ -73,5 +87,8 @@ class SessionTrackingInterceptor(
         client.trackSession(snapshot)
     }
 
-    private fun durationBetween(start: Instant, end: Instant): Duration = end - start
+    private fun durationBetween(
+        start: Instant,
+        end: Instant
+    ): Duration = end - start
 }

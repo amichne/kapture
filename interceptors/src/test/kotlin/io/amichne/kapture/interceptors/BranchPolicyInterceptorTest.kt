@@ -15,7 +15,9 @@ class BranchPolicyInterceptorTest {
     @Test
     fun `blocks branch creation when ticket missing and mode is BLOCK`() {
         val config = Config(
-            enforcement = Config.Enforcement(branchPolicy = Config.Enforcement.Mode.BLOCK, statusCheck = Config.Enforcement.Mode.OFF)
+            enforcement = Config.Enforcement(
+                branchPolicy = Config.Enforcement.Mode.BLOCK, statusCheck = Config.Enforcement.Mode.OFF
+            )
         )
         val interceptor = BranchPolicyInterceptor()
         val invocation = TestInvocation(listOf("checkout", "-b", "feature/no-ticket"))

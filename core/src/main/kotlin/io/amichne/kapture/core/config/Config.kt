@@ -20,7 +20,7 @@ data class Config(
     val sessionTrackingIntervalMs: Long = 300_000,
     val ticketSystem: String = "jira",
     val localStateRoot: String = System.getenv("KAPTURE_LOCAL_STATE")
-        ?: "${System.getProperty("user.home")}/.kapture/state"
+                                 ?: "${System.getProperty("user.home")}/.kapture/state"
 ) {
     @Serializable
     data class Enforcement(
@@ -43,6 +43,11 @@ data class Config(
             encodeDefaults = true
         }
 
+        /**
+         * Loads configuration from the explicit path, the `KAPTURE_CONFIG`
+         * environment override, or the default state directory. Missing files
+         * fall back to built-in defaults while ensuring the state root exists.
+         */
         fun load(explicitPath: Path? = null): Config {
             val defaults = Config()
             val candidates = buildList {

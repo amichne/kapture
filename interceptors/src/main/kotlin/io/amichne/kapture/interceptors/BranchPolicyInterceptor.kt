@@ -7,7 +7,16 @@ import io.amichne.kapture.core.http.TicketLookupResult
 import io.amichne.kapture.core.model.Invocation
 
 class BranchPolicyInterceptor : GitInterceptor {
-    override fun before(invocation: Invocation, config: Config, client: ExternalClient): Int? {
+    /**
+     * Ensures newly created branches conform to the configured naming policy
+     * and optionally validates that the associated ticket exists before Git
+     * proceeds.
+     */
+    override fun before(
+        invocation: Invocation,
+        config: Config,
+        client: ExternalClient
+    ): Int? {
         val mode = config.enforcement.branchPolicy
         if (mode == Config.Enforcement.Mode.OFF) return null
 
@@ -26,6 +35,7 @@ class BranchPolicyInterceptor : GitInterceptor {
                 mode,
                 "No ticket found for $ticket; verify before creating branch"
             )
+
             is TicketLookupResult.Error -> handleViolation(
                 mode,
                 "Ticket lookup failed for $ticket (${result.message}); proceeding cautiously"
@@ -33,16 +43,21 @@ class BranchPolicyInterceptor : GitInterceptor {
         }
     }
 
-    private fun handleViolation(mode: Config.Enforcement.Mode, message: String): Int? {
+    private fun handleViolation(
+        mode: Config.Enforcement.Mode,
+        message: String
+    ): Int? {
         when (mode) {
             Config.Enforcement.Mode.WARN -> {
                 System.err.println("[kapture] WARN: $message")
                 return null
             }
+
             Config.Enforcement.Mode.BLOCK -> {
                 System.err.println("[kapture] ERROR: $message")
                 return BRANCH_POLICY_EXIT_CODE
             }
+
             Config.Enforcement.Mode.OFF -> return null
         }
     }
@@ -57,7 +72,10 @@ class BranchPolicyInterceptor : GitInterceptor {
         }
     }
 
-    private fun parseSingleFlagVariant(args: List<String>, flags: Set<String>): String? {
+    private fun parseSingleFlagVariant(
+        args: List<String>,
+        flags: Set<String>
+    ): String? {
         for (i in args.indices) {
             val token = args[i]
             if (token !in flags && flags.none { token.startsWith(it) }) continue

@@ -15,6 +15,11 @@ object RealGitResolver {
         "C:/Program Files/Git/cmd/git.exe"
     )
 
+    /**
+     * Resolves the path to the real Git executable, honouring the `REAL_GIT`
+     * environment variable, config hint, PATH resolution, and OS-specific
+     * fallbacks while ensuring the wrapper does not recurse onto itself.
+     */
     fun resolve(configHint: String?): String {
         val candidates = LinkedHashSet<Path>()
         candidateFromEnv()?.let(candidates::add)
@@ -29,7 +34,9 @@ object RealGitResolver {
             if (!Files.exists(normalized) || !Files.isRegularFile(normalized) || !Files.isExecutable(normalized)) {
                 continue
             }
-            if (currentArtifact != null && runCatching { Files.isSameFile(normalized, currentArtifact) }.getOrDefault(false)) {
+            if (currentArtifact != null && runCatching { Files.isSameFile(normalized, currentArtifact) }.getOrDefault(
+                    false
+                )) {
                 Environment.debug { "Skipping $normalized (points to wrapper artifact)" }
                 continue
             }

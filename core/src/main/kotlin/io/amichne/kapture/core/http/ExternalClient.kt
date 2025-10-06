@@ -53,12 +53,22 @@ open class ExternalClient(
         }
     }
 
+    /**
+     * Closes the underlying HTTP client when this instance created it, freeing
+     * connection resources while remaining a no-op for injected clients.
+     */
     override fun close() {
         if (ownsClient) {
             httpClient.close()
         }
     }
 
+    /**
+     * Looks up the remote ticket status for the supplied identifier and
+     * returns a `TicketLookupResult` indicating success, absence, or error.
+     * Any networking failures are logged via `Environment.debug` and
+     * surfaced as `Error` to avoid crashing the CLI.
+     */
     open fun getTicketStatus(ticketId: String): TicketLookupResult {
         if (ticketId.isBlank()) return TicketLookupResult.NotFound
         return runBlocking {
@@ -89,6 +99,11 @@ open class ExternalClient(
         }
     }
 
+    /**
+     * Submits the provided session snapshot to the remote service, swallowing
+     * and logging transient failures so that Git invocations are not blocked
+     * by telemetry outages.
+     */
     open fun trackSession(snapshot: SessionSnapshot) {
         runBlocking {
             try {
@@ -102,6 +117,11 @@ open class ExternalClient(
         }
     }
 
+    /**
+     * Combines the configured base URL with a relative path while normalising
+     * leading and trailing slashes so callers can compose endpoint routes
+     * without worrying about separators.
+     */
     protected fun url(path: String): String {
         val normalizedBase = baseUrl.removeSuffix("/")
         val normalizedPath = if (path.startsWith("/")) path else "/$path"
