@@ -24,7 +24,8 @@ sealed class Plugin(val type: Type) {
     @SerialName("rest")
     data class Http(
         val baseUrl: String = "http://localhost:8080",
-        val auth: Authentication = Authentication.None
+        val auth: Authentication = Authentication.None,
+        val timeoutMs: Long = 10_000
     ) : Plugin(Type.HTTP)
 
     /**

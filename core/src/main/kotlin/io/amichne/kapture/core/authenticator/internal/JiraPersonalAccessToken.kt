@@ -2,17 +2,18 @@ package io.amichne.kapture.core.authenticator.internal
 
 import io.amichne.kapture.core.authenticator.RequestAuthenticator
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
-import io.amichne.kapture.core.util.JsonProvider
 
+/**
+ * Jira Personal Access Token authenticator that delegates to Basic authentication
+ * using email as username and token as password.
+ */
 internal class JiraPersonalAccessToken(
-    private val email: String,
-    private val token: String
+    email: String,
+    token: String
 ) : RequestAuthenticator {
+    private val delegate = BasicAuthenticator(email, token)
+    
     override fun apply(builder: HttpRequestBuilder) {
-        if (email.isBlank() || token.isBlank()) return
-        val encoded = JsonProvider.encodeBasic("$email:$token")
-        builder.header(HttpHeaders.Authorization, "Basic $encoded")
+        delegate.apply(builder)
     }
 }

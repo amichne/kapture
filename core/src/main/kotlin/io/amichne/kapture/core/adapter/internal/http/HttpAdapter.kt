@@ -40,8 +40,8 @@ internal class HttpAdapter(
     private val httpClient: HttpClient = HttpClient(CIO) {
         install(ContentNegotiation.Plugin) { json(json) }
         install(HttpTimeout.Plugin) {
-            requestTimeoutMillis = 10_000
-            connectTimeoutMillis = 10_000
+            requestTimeoutMillis = integration.timeoutMs
+            connectTimeoutMillis = integration.timeoutMs
         }
         defaultRequest {
             header(HttpHeaders.Accept, ContentType.Application.Json)
