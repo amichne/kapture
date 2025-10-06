@@ -1,0 +1,233 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../ktor-client-mock/2.3.12/ktor-client-mock-2.3.12.module",
+    "group": "io.ktor",
+    "module": "ktor-client-mock",
+    "version": "2.3.12",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-jdk8",
+          "version": {
+            "requires": "1.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jvm"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk8"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk7"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.7.36"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-http",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-client-mock-jvm-2.3.12.jar",
+          "url": "ktor-client-mock-jvm-2.3.12.jar",
+          "size": 20899,
+          "sha512": "b292db0d7d940d92cbc03b5d7d8759c4e2f46410f78fcee5b60e3909ba0c21cbbc2f07e3d446753feac9e6bc1e9e6332a0184b9f34d1021264ce6b3e0bdc14eb",
+          "sha256": "c631d4e9d3b13739d6787ca1f6703984007c1e50b881ebe0706bb12eeb29b1bc",
+          "sha1": "58f7c41e4c7eb5fc324904c853e10b7e715441d7",
+          "md5": "c6badf1a0e588d1b5f7695591a67f3a6"
+        }
+      ]
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-jdk8",
+          "version": {
+            "requires": "1.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jvm"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk8"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk7"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.7.36"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-http",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-client-mock-jvm-2.3.12.jar",
+          "url": "ktor-client-mock-jvm-2.3.12.jar",
+          "size": 20899,
+          "sha512": "b292db0d7d940d92cbc03b5d7d8759c4e2f46410f78fcee5b60e3909ba0c21cbbc2f07e3d446753feac9e6bc1e9e6332a0184b9f34d1021264ce6b3e0bdc14eb",
+          "sha256": "c631d4e9d3b13739d6787ca1f6703984007c1e50b881ebe0706bb12eeb29b1bc",
+          "sha1": "58f7c41e4c7eb5fc324904c853e10b7e715441d7",
+          "md5": "c6badf1a0e588d1b5f7695591a67f3a6"
+        }
+      ]
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "ktor-client-mock-jvm-2.3.12-sources.jar",
+          "url": "ktor-client-mock-jvm-2.3.12-sources.jar",
+          "size": 4239,
+          "sha512": "0902598784869151ff2bff683dd7b11cb472945a5eabd93008e5e945502b42e4ccfe816fb818414f389781fb0e4fd3ef0cc80a069676904ee8f2c6492a07e0e8",
+          "sha256": "0f38269470a2d5677b0311650360fd9a77d623cc489ec16486b4589780cab97c",
+          "sha1": "f09a799f83553c2aa1b65cfb6a32f5de9423276d",
+          "md5": "9700ec2d26caab7bef22335f38fc3a67"
+        }
+      ]
+    }
+  ]
+}

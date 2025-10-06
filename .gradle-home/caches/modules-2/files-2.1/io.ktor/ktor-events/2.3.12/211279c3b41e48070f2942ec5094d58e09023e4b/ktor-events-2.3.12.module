@@ -1,0 +1,852 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.ktor",
+    "module": "ktor-events",
+    "version": "2.3.12",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "metadataApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-http",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-utils",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "atomicfu",
+          "version": {
+            "requires": "0.19.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-events-metadata-2.3.12.jar",
+          "url": "ktor-events-2.3.12.jar",
+          "size": 4411,
+          "sha512": "d83394b339071340f512f08173bd77629edb22fdffa2b92baa45f6f087db8d23d540c94b1d7b74f49932130bf73ac3dd66900cfa9d18eb5c5d1e79b0e81ccb2c",
+          "sha256": "75076f6def7f570946916998330d27dbc3af7617cecb25d1657c9a0d42901604",
+          "sha1": "4102b4a011667cc9d0c9d5636ebfb39d2f46466f",
+          "md5": "4fd5333271ac8ec2ec2138d3b217897c"
+        }
+      ]
+    },
+    {
+      "name": "metadataSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "files": [
+        {
+          "name": "ktor-events-kotlin-2.3.12-sources.jar",
+          "url": "ktor-events-2.3.12-sources.jar",
+          "size": 2072,
+          "sha512": "bc8c4431ea49a7b97661e5cf00070e7ddd15bc86fe0c2c63dbde4b1d91198f1b077aed0d451c029337324faa54f322e49b0751cd19eb17d3398f25ddfa2810f5",
+          "sha256": "1213d03731e0504ef9fd04ae0333c33f9352b1cac59697bd698aa0b37aacc5de",
+          "sha1": "14a9cb45d01c0c8d5a8c2f2c150f5f6534cf5aee",
+          "md5": "3be695501cd7f07a54b716e3a7b1a02d"
+        }
+      ]
+    },
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iosarm64/2.3.12/ktor-events-iosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iosarm64/2.3.12/ktor-events-iosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iosarm64/2.3.12/ktor-events-iosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iossimulatorarm64/2.3.12/ktor-events-iossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iossimulatorarm64/2.3.12/ktor-events-iossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iossimulatorarm64/2.3.12/ktor-events-iossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iosx64/2.3.12/ktor-events-iosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iosx64/2.3.12/ktor-events-iosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "iosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-iosx64/2.3.12/ktor-events-iosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-iosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "jsApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "available-at": {
+        "url": "../../ktor-events-js/2.3.12/ktor-events-js-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-js",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "jsRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "available-at": {
+        "url": "../../ktor-events-js/2.3.12/ktor-events-js-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-js",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "jsSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.js.compiler": "ir",
+        "org.jetbrains.kotlin.platform.type": "js"
+      },
+      "available-at": {
+        "url": "../../ktor-events-js/2.3.12/ktor-events-js-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-js",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../ktor-events-jvm/2.3.12/ktor-events-jvm-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-jvm",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../ktor-events-jvm/2.3.12/ktor-events-jvm-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-jvm",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../ktor-events-jvm/2.3.12/ktor-events-jvm-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-jvm",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "linuxArm64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "linux_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-linuxarm64/2.3.12/ktor-events-linuxarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-linuxarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "linuxArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "linux_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-linuxarm64/2.3.12/ktor-events-linuxarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-linuxarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "linuxX64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-linuxx64/2.3.12/ktor-events-linuxx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-linuxx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "linuxX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-linuxx64/2.3.12/ktor-events-linuxx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-linuxx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "macosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "macos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-macosarm64/2.3.12/ktor-events-macosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-macosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "macosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "macos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-macosarm64/2.3.12/ktor-events-macosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-macosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "macosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "macos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-macosarm64/2.3.12/ktor-events-macosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-macosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "macosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "macos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-macosx64/2.3.12/ktor-events-macosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-macosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "macosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "macos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-macosx64/2.3.12/ktor-events-macosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-macosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "macosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "macos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-macosx64/2.3.12/ktor-events-macosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-macosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "mingwX64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "mingw_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-mingwx64/2.3.12/ktor-events-mingwx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-mingwx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "mingwX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "mingw_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-mingwx64/2.3.12/ktor-events-mingwx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-mingwx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "tvos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvosarm64/2.3.12/ktor-events-tvosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "tvos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvosarm64/2.3.12/ktor-events-tvosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "tvos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvosarm64/2.3.12/ktor-events-tvosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "tvos_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvossimulatorarm64/2.3.12/ktor-events-tvossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "tvos_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvossimulatorarm64/2.3.12/ktor-events-tvossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "tvos_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvossimulatorarm64/2.3.12/ktor-events-tvossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "tvos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvosx64/2.3.12/ktor-events-tvosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "tvos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvosx64/2.3.12/ktor-events-tvosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "tvosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "tvos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-tvosx64/2.3.12/ktor-events-tvosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-tvosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosArm32ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "watchos_arm32",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosarm32/2.3.12/ktor-events-watchosarm32-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosarm32",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosArm32MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "watchos_arm32",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosarm32/2.3.12/ktor-events-watchosarm32-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosarm32",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosArm32SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "watchos_arm32",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosarm32/2.3.12/ktor-events-watchosarm32-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosarm32",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "watchos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosarm64/2.3.12/ktor-events-watchosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "watchos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosarm64/2.3.12/ktor-events-watchosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "watchos_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosarm64/2.3.12/ktor-events-watchosarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "watchos_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchossimulatorarm64/2.3.12/ktor-events-watchossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "watchos_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchossimulatorarm64/2.3.12/ktor-events-watchossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "watchos_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchossimulatorarm64/2.3.12/ktor-events-watchossimulatorarm64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchossimulatorarm64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "watchos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosx64/2.3.12/ktor-events-watchosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "watchos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosx64/2.3.12/ktor-events-watchosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosx64",
+        "version": "2.3.12"
+      }
+    },
+    {
+      "name": "watchosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "watchos_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../ktor-events-watchosx64/2.3.12/ktor-events-watchosx64-2.3.12.module",
+        "group": "io.ktor",
+        "module": "ktor-events-watchosx64",
+        "version": "2.3.12"
+      }
+    }
+  ]
+}

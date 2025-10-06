@@ -1,0 +1,219 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../ktor-websockets/2.3.12/ktor-websockets-2.3.12.module",
+    "group": "io.ktor",
+    "module": "ktor-websockets",
+    "version": "2.3.12",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-jdk8",
+          "version": {
+            "requires": "1.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jvm"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk8"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk7"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.7.36"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-http",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-websockets-jvm-2.3.12.jar",
+          "url": "ktor-websockets-jvm-2.3.12.jar",
+          "size": 177905,
+          "sha512": "a8a9a52e527861407e8abdbdd973923d283230d829201a5760af0d2923678c0596d3e3f19b62d35b216de90b44dc9959ea9e39379860b0b9cd9ae584241ec62a",
+          "sha256": "dc35cc539f4dfa5a4ad9b391c14d06527dfac4f64b3e3f050f5143ceb215bca4",
+          "sha1": "39a56f99eab9e067b8f7e67bc849b1f790575a28",
+          "md5": "fe6825d7b4f0f4ec9d7855f08d553cbb"
+        }
+      ]
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-jdk8",
+          "version": {
+            "requires": "1.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jvm"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk8"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk7"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.7.36"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-http",
+          "version": {
+            "requires": "2.3.12"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-websockets-jvm-2.3.12.jar",
+          "url": "ktor-websockets-jvm-2.3.12.jar",
+          "size": 177905,
+          "sha512": "a8a9a52e527861407e8abdbdd973923d283230d829201a5760af0d2923678c0596d3e3f19b62d35b216de90b44dc9959ea9e39379860b0b9cd9ae584241ec62a",
+          "sha256": "dc35cc539f4dfa5a4ad9b391c14d06527dfac4f64b3e3f050f5143ceb215bca4",
+          "sha1": "39a56f99eab9e067b8f7e67bc849b1f790575a28",
+          "md5": "fe6825d7b4f0f4ec9d7855f08d553cbb"
+        }
+      ]
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "ktor-websockets-jvm-2.3.12-sources.jar",
+          "url": "ktor-websockets-jvm-2.3.12-sources.jar",
+          "size": 33352,
+          "sha512": "0855af045e2d7fcdb72723ac93e68b34e2c5d4f813478d74f8905f3a5126c2afae00259c59a372b4d5c542754bdf39e31b5bfc409a581507bd474a71213df691",
+          "sha256": "0027c56f7c0d2b3272bbe47c5b53a8e3e47be673f72a86578aa6b87ab0f534b0",
+          "sha1": "493c63ed88319d849bd4c7914f395e93c4abe9ea",
+          "md5": "36f8db8c0bd61ac0718a8696f06eebc1"
+        }
+      ]
+    }
+  ]
+}

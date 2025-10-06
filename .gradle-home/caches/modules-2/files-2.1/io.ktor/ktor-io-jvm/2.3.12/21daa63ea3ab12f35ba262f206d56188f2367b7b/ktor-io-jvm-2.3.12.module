@@ -1,0 +1,205 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../ktor-io/2.3.12/ktor-io-2.3.12.module",
+    "group": "io.ktor",
+    "module": "ktor-io",
+    "version": "2.3.12",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-jdk8",
+          "version": {
+            "requires": "1.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jvm"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk8"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk7"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.7.36"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-io-jvm-2.3.12.jar",
+          "url": "ktor-io-jvm-2.3.12.jar",
+          "size": 810514,
+          "sha512": "ca1b552268db292cfe6a215b5aa51052c47f05ae4402507af04ebc018aad14d9d2f0beaeaa85927a822fd4816327cab9415e8d2f9cd19a149a5f3e7b4f5e4104",
+          "sha256": "1d93a45665f6744ff96cd7b97a45fb85ffec725b63bcc327d33a26a1c7e05fbd",
+          "sha1": "0dea94306b4bd351f6e32ac3fbfb196db58f955f",
+          "md5": "ac1278c7729e46fbca88ca1c3ac267cb"
+        }
+      ]
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.8.22"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-jdk8",
+          "version": {
+            "requires": "1.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jvm"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk8"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib-jdk7"
+            },
+            {
+              "group": "*",
+              "module": "kotlin-stdlib"
+            }
+          ]
+        },
+        {
+          "group": "org.slf4j",
+          "module": "slf4j-api",
+          "version": {
+            "requires": "1.7.36"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.7.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-common",
+          "version": {
+            "requires": "1.8.22"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ktor-io-jvm-2.3.12.jar",
+          "url": "ktor-io-jvm-2.3.12.jar",
+          "size": 810514,
+          "sha512": "ca1b552268db292cfe6a215b5aa51052c47f05ae4402507af04ebc018aad14d9d2f0beaeaa85927a822fd4816327cab9415e8d2f9cd19a149a5f3e7b4f5e4104",
+          "sha256": "1d93a45665f6744ff96cd7b97a45fb85ffec725b63bcc327d33a26a1c7e05fbd",
+          "sha1": "0dea94306b4bd351f6e32ac3fbfb196db58f955f",
+          "md5": "ac1278c7729e46fbca88ca1c3ac267cb"
+        }
+      ]
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "ktor-io-jvm-2.3.12-sources.jar",
+          "url": "ktor-io-jvm-2.3.12-sources.jar",
+          "size": 150937,
+          "sha512": "ae6135fc7dcd865b3ea5ed77b7c56114d44d028324bbaedef53104a8fd78ab24a6cca3ec791aa74638d9a7bc6437273402e988233a038a156a2d0afa7b40623d",
+          "sha256": "f3a8d1835fd26acd0cd90a51e667fe707c1f0c853d1d5fc2ad97b3a75d10eaa6",
+          "sha1": "553fbbd4f206c8f9d19f451e221cd7ee08c9b093",
+          "md5": "d381e4f12489b2b02df44a2c63bcaace"
+        }
+      ]
+    }
+  ]
+}
