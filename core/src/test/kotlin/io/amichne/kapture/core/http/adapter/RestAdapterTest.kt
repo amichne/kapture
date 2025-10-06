@@ -1,16 +1,17 @@
 package io.amichne.kapture.core.http.adapter
 
-import io.amichne.kapture.core.config.AuthConfig
-import io.amichne.kapture.core.config.ExternalIntegration
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.model.SessionSnapshot
+import io.amichne.kapture.core.adapter.internal.http.HttpAdapter
+import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Plugin
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.session.SessionSnapshot
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 /**
- * Integration tests for RestAdapter. These tests verify the adapter's
+ * Integration tests for HttpAdapter. These tests verify the adapter's
  * behavior with various configurations and error conditions.
  *
  * Note: These are primarily construction and basic behavior tests.
@@ -24,65 +25,65 @@ class RestAdapterTest {
     @Test
     fun `adapter can be created with various auth configurations`() {
         val integrations = listOf(
-            ExternalIntegration.Rest(baseUrl = "https://api.example.com", auth = AuthConfig.None),
-            ExternalIntegration.Rest(baseUrl = "https://api.example.com", auth = AuthConfig.Bearer("token")),
-            ExternalIntegration.Rest(baseUrl = "https://api.example.com", auth = AuthConfig.Basic("user", "pass")),
-            ExternalIntegration.Rest(baseUrl = "https://api.example.com", auth = AuthConfig.JiraPat("email", "token"))
+            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.None),
+            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.Bearer("token")),
+            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.Basic("user", "pass")),
+            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.PersonalAccessToken("email", "token"))
         )
 
         integrations.forEach { integration ->
-            val adapter = RestAdapter(integration, json)
+            val adapter = HttpAdapter(integration, json)
             assertNotNull(adapter)
             adapter.close()
         }
     }
 
     @Test
-    fun `getTicketStatus returns NotFound for blank ticket ID`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com")
-        val adapter = RestAdapter(integration, json)
+    fun `getTaskStatus returns NotFound for blank task ID`() {
+        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("")
+        val result = adapter.getTaskStatus("")
 
-        assertEquals(TicketLookupResult.NotFound, result)
+        assertEquals(TaskSearchResult.NotFound, result)
         adapter.close()
     }
 
     @Test
-    fun `getTicketStatus returns NotFound for whitespace ticket ID`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com")
-        val adapter = RestAdapter(integration, json)
+    fun `getTaskStatus returns NotFound for whitespace task ID`() {
+        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("   ")
+        val result = adapter.getTaskStatus("   ")
 
-        assertEquals(TicketLookupResult.NotFound, result)
+        assertEquals(TaskSearchResult.NotFound, result)
         adapter.close()
     }
 
     @Test
-    fun `getTicketStatus handles non-existent host gracefully`() {
-        val integration = ExternalIntegration.Rest(
+    fun `getTaskStatus handles non-existent host gracefully`() {
+        val integration = Plugin.Http(
             baseUrl = "https://this-host-does-not-exist-12345.invalid"
         )
-        val adapter = RestAdapter(integration, json)
+        val adapter = HttpAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
         // Should return an error result, not throw
-        assertTrue(result is TicketLookupResult.Error || result is TicketLookupResult.NotFound)
+        assertTrue(result is TaskSearchResult.Error || result is TaskSearchResult.NotFound)
         adapter.close()
     }
 
     @Test
     fun `trackSession does not throw on errors`() {
-        val integration = ExternalIntegration.Rest(
+        val integration = Plugin.Http(
             baseUrl = "https://this-host-does-not-exist-12345.invalid"
         )
-        val adapter = RestAdapter(integration, json)
+        val adapter = HttpAdapter(integration, json)
 
         val snapshot = SessionSnapshot(
             branch = "main",
-            ticket = null,
+            task = null,
             startTime = Instant.fromEpochMilliseconds(0),
             endTime = Instant.fromEpochMilliseconds(1000),
             durationMs = 1000
@@ -95,8 +96,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter handles base URL with trailing slash`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com/")
-        val adapter = RestAdapter(integration, json)
+        val integration = Plugin.Http(baseUrl = "https://api.example.com/")
+        val adapter = HttpAdapter(integration, json)
 
         assertNotNull(adapter)
         adapter.close()
@@ -104,8 +105,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter handles base URL without trailing slash`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com")
-        val adapter = RestAdapter(integration, json)
+        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration, json)
 
         assertNotNull(adapter)
         adapter.close()
@@ -113,8 +114,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter handles base URL with path`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com/api/v1")
-        val adapter = RestAdapter(integration, json)
+        val integration = Plugin.Http(baseUrl = "https://api.example.com/api/v1")
+        val adapter = HttpAdapter(integration, json)
 
         assertNotNull(adapter)
         adapter.close()
@@ -122,8 +123,8 @@ class RestAdapterTest {
 
     @Test
     fun `close releases resources and can be called multiple times`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com")
-        val adapter = RestAdapter(integration, json)
+        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration, json)
 
         adapter.close()
         adapter.close() // Should not throw
@@ -131,17 +132,17 @@ class RestAdapterTest {
 
     @Test
     fun `multiple adapters can be created and closed independently`() {
-        val adapter1 = RestAdapter(
-            ExternalIntegration.Rest(baseUrl = "https://api1.example.com"),
+        val adapter1 = HttpAdapter(
+            Plugin.Http(baseUrl = "https://api1.example.com"),
             json
         )
-        val adapter2 = RestAdapter(
-            ExternalIntegration.Rest(baseUrl = "https://api2.example.com"),
+        val adapter2 = HttpAdapter(
+            Plugin.Http(baseUrl = "https://api2.example.com"),
             json
         )
 
-        adapter1.getTicketStatus("")
-        adapter2.getTicketStatus("")
+        adapter1.getTaskStatus("")
+        adapter2.getTaskStatus("")
 
         adapter1.close()
         adapter2.close()
@@ -153,8 +154,8 @@ class RestAdapterTest {
             ignoreUnknownKeys = false
             prettyPrint = true
         }
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com")
-        val adapter = RestAdapter(integration, customJson)
+        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration, customJson)
 
         assertNotNull(adapter)
         adapter.close()
@@ -162,8 +163,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter uses default JSON when not specified`() {
-        val integration = ExternalIntegration.Rest(baseUrl = "https://api.example.com")
-        val adapter = RestAdapter(integration)
+        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration)
 
         assertNotNull(adapter)
         adapter.close()

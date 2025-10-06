@@ -50,7 +50,7 @@ mkdir -p "$HOME/.kapture"
 cat > "$HOME/.kapture/config.json" << 'EOF'
 {
   "externalBaseUrl": "http://localhost:8080",
-  "branchPattern": "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "WARN",
     "statusCheck": "OFF"
@@ -202,7 +202,7 @@ echo "=== Test 10: BLOCK Mode ==="
 # Update config to BLOCK mode
 cat > "$HOME/.kapture/config.json" << 'EOF'
 {
-  "branchPattern": "^(?<ticket>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "BLOCK",
     "statusCheck": "OFF"

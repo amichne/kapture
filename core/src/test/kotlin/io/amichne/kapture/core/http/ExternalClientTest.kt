@@ -1,13 +1,17 @@
 package io.amichne.kapture.core.http
 
-import io.amichne.kapture.core.config.AuthConfig
-import io.amichne.kapture.core.config.ExternalIntegration
-import io.amichne.kapture.core.http.adapter.Adapter
-import io.amichne.kapture.core.model.SessionSnapshot
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Plugin
+import io.amichne.kapture.core.adapter.Adapter
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
+import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.TaskSearchResult
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 class ExternalClientTest {
 
@@ -16,31 +20,31 @@ class ExternalClientTest {
         val adapter = TestAdapter()
         val client = ExternalClient.wrap(adapter)
 
-        val result = client.getTicketStatus("TEST-123")
+        val result = client.getTaskStatus("TEST-123")
 
-        assertEquals(TicketLookupResult.Found("IN_PROGRESS"), result)
-        assertEquals(1, adapter.getTicketStatusCallCount)
+        assertEquals(TaskSearchResult.Found("IN_PROGRESS"), result)
+        assertEquals(1, adapter.getTaskStatusCallCount)
     }
 
     @Test
-    fun `getTicketStatus delegates to adapter`() {
-        val adapter = TestAdapter(ticketResult = TicketLookupResult.NotFound)
+    fun `getTaskStatus delegates to adapter`() {
+        val adapter = TestAdapter(taskResult = TaskSearchResult.NotFound)
         val client = ExternalClient.wrap(adapter)
 
-        val result = client.getTicketStatus("MISSING-999")
+        val result = client.getTaskStatus("MISSING-999")
 
-        assertEquals(TicketLookupResult.NotFound, result)
-        assertEquals(1, adapter.getTicketStatusCallCount)
+        assertEquals(TaskSearchResult.NotFound, result)
+        assertEquals(1, adapter.getTaskStatusCallCount)
     }
 
     @Test
-    fun `getTicketStatus handles error result from adapter`() {
-        val adapter = TestAdapter(ticketResult = TicketLookupResult.Error("timeout"))
+    fun `getTaskStatus handles error result from adapter`() {
+        val adapter = TestAdapter(taskResult = TaskSearchResult.Error("timeout"))
         val client = ExternalClient.wrap(adapter)
 
-        val result = client.getTicketStatus("TEST-456")
+        val result = client.getTaskStatus("TEST-456")
 
-        assertEquals(TicketLookupResult.Error("timeout"), result)
+        assertEquals(TaskSearchResult.Error("timeout"), result)
     }
 
     @Test
@@ -49,7 +53,7 @@ class ExternalClientTest {
         val client = ExternalClient.wrap(adapter)
         val snapshot = SessionSnapshot(
             branch = "TEST-123/feature",
-            ticket = "TEST-123",
+            task = "TEST-123",
             startTime = Instant.fromEpochMilliseconds(1000),
             endTime = Instant.fromEpochMilliseconds(2000),
             durationMs = 1000
@@ -73,9 +77,9 @@ class ExternalClientTest {
 
     @Test
     fun `from creates RestAdapter for Rest integration`() {
-        val integration = ExternalIntegration.Rest(
+        val integration = Plugin.Http(
             baseUrl = "https://api.example.com",
-            auth = AuthConfig.None
+            auth = Authentication.None
         )
 
         val client = ExternalClient.from(integration)
@@ -86,7 +90,7 @@ class ExternalClientTest {
 
     @Test
     fun `from creates JiraCliAdapter for JiraCli integration`() {
-        val integration = ExternalIntegration.JiraCli(
+        val integration = Plugin.Cli(
             executable = "jira",
             environment = mapOf("JIRA_API_TOKEN" to "test-token"),
             timeoutSeconds = 30
@@ -103,11 +107,11 @@ class ExternalClientTest {
         val adapter = TestAdapter()
         val client = ExternalClient.wrap(adapter)
 
-        client.getTicketStatus("TICKET-1")
-        client.getTicketStatus("TICKET-2")
+        client.getTaskStatus("TASK-1")
+        client.getTaskStatus("TASK-2")
         val snapshot = SessionSnapshot(
             branch = "main",
-            ticket = null,
+            task = null,
             startTime = Instant.fromEpochMilliseconds(0),
             endTime = Instant.fromEpochMilliseconds(1000),
             durationMs = 1000
@@ -115,22 +119,22 @@ class ExternalClientTest {
         client.trackSession(snapshot)
         client.close()
 
-        assertEquals(2, adapter.getTicketStatusCallCount)
+        assertEquals(2, adapter.getTaskStatusCallCount)
         assertEquals(1, adapter.trackSessionCallCount)
         assertEquals(1, adapter.closeCallCount)
     }
 
     private class TestAdapter(
-        private val ticketResult: TicketLookupResult = TicketLookupResult.Found("IN_PROGRESS")
+        private val taskResult: TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
     ) : Adapter {
-        var getTicketStatusCallCount = 0
+        var getTaskStatusCallCount = 0
         var trackSessionCallCount = 0
         var closeCallCount = 0
         var lastSessionSnapshot: SessionSnapshot? = null
 
-        override fun getTicketStatus(ticketId: String): TicketLookupResult {
-            getTicketStatusCallCount++
-            return ticketResult
+        override fun getTaskStatus(taskId: String): TaskSearchResult {
+            getTaskStatusCallCount++
+            return taskResult
         }
 
         override fun trackSession(snapshot: SessionSnapshot) {
@@ -139,13 +143,13 @@ class ExternalClientTest {
         }
 
         override fun createSubtask(parentId: String, title: String?) =
-            io.amichne.kapture.core.http.adapter.SubtaskCreationResult.Failure("Not implemented")
+            SubtaskCreationResult.Failure("Not implemented")
 
-        override fun transitionIssue(issueId: String, targetStatus: String) =
-            io.amichne.kapture.core.http.adapter.TransitionResult.Failure("Not implemented")
+        override fun transitionTask(taskId: String, targetStatus: String) =
+            TaskTransitionResult.Failure("Not implemented")
 
-        override fun getIssueDetails(issueId: String) =
-            io.amichne.kapture.core.http.adapter.IssueDetailsResult.Failure("Not implemented")
+        override fun getTaskDetails(taskId: String) =
+            TaskDetailsResult.Failure("Not implemented")
 
         override fun close() {
             closeCallCount++

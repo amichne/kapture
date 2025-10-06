@@ -4,10 +4,10 @@ Kapture is a minimally intrusive Jira workflow orchestrator, driven by `git`, au
 
 ### Git under the hood
 Kapture is a Kotlin-based Git wrapper that inserts policy, status, and telemetry interceptors in front of the real `git`
-executable. It resolves the genuine Git binary on each invocation, evaluates configurable rules (branch naming,
-ticket status, etc.), and finally forwards the original command to Git.
+executable. It resolves the genuine Git binary on each commandInvocation, evaluates configurable rules (branch naming,
+task status, etc.), and finally forwards the original command to Git.
 
-Kapture provides a robust manner to apply consistent governance regarding ticket management,
+Kapture provides a robust manner to apply consistent governance regarding task management,
 across entire organizations, without disrupting workflows or adding developer overhead.
 
 
@@ -15,7 +15,7 @@ across entire organizations, without disrupting workflows or adding developer ov
 ### Highlights
 
 - Branch name policy checks with configurable warning/blocking behaviour
-- Remote ticket status lookups before `commit`/`push` via the pluggable `ExternalClient`
+- Remote task status lookups before `commit`/`push` via the pluggable `ExternalClient`
 - Git event tracking to record events (_when `trackingEnabled` is on_)
 - Shadow JAR distribution *and* GraalVM native image build, for zero-dependency installs
 - Extensible interceptor pipeline allow registering custom logic without disturbing existing rules
@@ -64,7 +64,7 @@ git kapture subtask <PARENT-ID> [subtask-title]
 ```
 
 **Inputs**
-- `PARENT-ID`: Required Jira ticket key for the parent story/epic.
+- `PARENT-ID`: Required Jira task key for the parent story/epic.
 - `subtask-title`: Optional summary for the new subtask. Defaults to Jira template if omitted.
 
 **Outputs**
@@ -84,7 +84,7 @@ Creating subtask under parent PROJ-123...
 ```bash
 $ git kapture subtask PROJ-999
 Creating subtask under parent PROJ-999...
-✗ Failed to create subtask: Parent issue not found
+✗ Failed to create subtask: Parent task not found
 ```
 
 ---
@@ -102,7 +102,7 @@ git kapture branch <SUBTASK-ID>
 **Outputs**
 - Standard out: Branch name and transition status.
 - Git branch: Created locally via `git checkout -b` following your `branchPattern`.
-- Exit code `0`: Branch created and Jira issue transitioned to "In Progress".
+- Exit code `0`: Branch created and Jira task transitioned to "In Progress".
 - Exit code `1`: Subtask missing, status disallowed, git branch command failed, or Jira transition error.
 
 **Example (success)**
@@ -131,14 +131,14 @@ git kapture review
 ```
 
 **Inputs**
-- Current git branch: Must contain a ticket key matching `branchPattern`.
+- Current git branch: Must contain a task key matching `branchPattern`.
 - Git working tree: Must be clean enough for `git push` and `gh pr create` to succeed.
 - Environment: GitHub CLI authenticated; Jira credentials valid.
 
 **Outputs**
 - Standard out: Push status, PR creation status, Jira transition logs, PR URL.
 - Exit code `0`: Branch pushed, PR opened, subtask transitioned to "Code Review".
-- Exit code `1`: Ticket extraction failure, status invalid, push/PR creation error, or Jira transition error.
+- Exit code `1`: Task extraction failure, status invalid, push/PR creation error, or Jira transition error.
 
 **Example (success)**
 ```bash
@@ -155,19 +155,19 @@ https://github.com/org/repo/pull/42
 **Example (failure)**
 ```bash
 $ git kapture review
-✗ Current branch 'main' does not contain a valid ticket ID
-  Expected pattern: ^(?<ticket>[A-Z]+-\d+)/[a-z0-9._-]+$
+✗ Current branch 'main' does not contain a valid task ID
+  Expected pattern: ^(?<task>[A-Z]+-\d+)/[a-z0-9._-]+$
 ```
 
 **Pull Request Body Template**
 ```markdown
 <details>
-<summary>📋 Jira Ticket Details</summary>
+<summary>📋 Jira Task Details</summary>
 
-**Ticket:** PROJ-124
+**Task:** PROJ-124
 **Summary:** Implement user authentication
 
-_Full issue description from Jira_
+_Full task description from Jira_
 </details>
 
 <details>
@@ -195,7 +195,7 @@ git kapture merge
 **Outputs**
 - Standard out: Merge status and Jira transition result.
 - Exit code `0`: PR merged (squash + auto) and subtask transitioned to "Done".
-- Exit code `1`: Ticket missing/invalid, merge command failure, or Jira transition failure.
+- Exit code `1`: Task missing/invalid, merge command failure, or Jira transition failure.
 
 **Example (success)**
 ```bash
@@ -266,8 +266,8 @@ Code Review → Done (on PR merge)
 
 All workflow commands include comprehensive validation:
 
-- **Status Checks**: Ensures issues are in the correct state before proceeding
-- **Ticket Existence**: Validates that referenced tickets exist in Jira
+- **Status Checks**: Ensures tasks are in the correct state before proceeding
+- **Task Existence**: Validates that referenced tasks exist in Jira
 - **Branch Name Validation**: Ensures branch names follow the configured pattern
 - **Git Operations**: Proper error handling for all git/GitHub operations
 

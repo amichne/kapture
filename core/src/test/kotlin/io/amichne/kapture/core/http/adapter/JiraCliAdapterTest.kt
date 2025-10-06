@@ -1,15 +1,22 @@
 package io.amichne.kapture.core.http.adapter
 
-import io.amichne.kapture.core.config.ExternalIntegration
-import io.amichne.kapture.core.exec.Exec
-import io.amichne.kapture.core.exec.ExecResult
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.model.SessionSnapshot
-import io.mockk.*
+import io.amichne.kapture.core.adapter.internal.jira.JiraCliAdapter
+import io.amichne.kapture.core.command.CommandExecutor
+import io.amichne.kapture.core.config.Integration
+import io.amichne.kapture.core.model.command.CommandResult
+import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
+import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.slot
+import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -19,16 +26,16 @@ class JiraCliAdapterTest {
 
     @BeforeEach
     fun setUp() {
-        mockkObject(Exec)
+        mockkObject(CommandExecutor)
     }
 
     @AfterEach
     fun tearDown() {
-        unmockkObject(Exec)
+        unmockkObject(CommandExecutor)
     }
 
     @Test
-    fun `getTicketStatus returns Found when CLI returns valid JSON`() {
+    fun `getTaskStatus returns Found when CLI returns valid JSON`() {
         val validResponse = """
             {
                 "fields": {
@@ -40,64 +47,64 @@ class JiraCliAdapterTest {
         """.trimIndent()
 
         every {
-            Exec.capture(
-                cmd = listOf("jira", "issue", "view", "TEST-123", "--output", "json"),
+            CommandExecutor.capture(
+                cmd = listOf("jira-cli", "task", "view", "TEST-123", "--output", "json"),
                 env = any(),
-                timeoutSeconds = 15
+                timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
-        val adapter = JiraCliAdapter(integration, json)
+        val integration = Integration.Jira.toPlugin()
+        val adapter = JiraCliAdapter()
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
-        assertEquals(TicketLookupResult.Found("In Progress"), result)
+        assertEquals(TaskSearchResult.Found("In Progress"), result)
     }
 
     @Test
-    fun `getTicketStatus returns NotFound for blank ticket ID`() {
-        val integration = ExternalIntegration.JiraCli()
+    fun `getTaskStatus returns NotFound for blank task ID`() {
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("")
+        val result = adapter.getTaskStatus("")
 
-        assertEquals(TicketLookupResult.NotFound, result)
-        verify(exactly = 0) { Exec.capture(any(), any(), any(), any(), any()) }
+        assertEquals(TaskSearchResult.NotFound, result)
+        verify(exactly = 0) { CommandExecutor.capture(any(), any(), any(), any(), any()) }
     }
 
     @Test
-    fun `getTicketStatus returns NotFound for whitespace ticket ID`() {
-        val integration = ExternalIntegration.JiraCli()
+    fun `getTaskStatus returns NotFound for whitespace task ID`() {
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("   ")
+        val result = adapter.getTaskStatus("   ")
 
-        assertEquals(TicketLookupResult.NotFound, result)
-        verify(exactly = 0) { Exec.capture(any(), any(), any(), any(), any()) }
+        assertEquals(TaskSearchResult.NotFound, result)
+        verify(exactly = 0) { CommandExecutor.capture(any(), any(), any(), any(), any()) }
     }
 
     @Test
-    fun `getTicketStatus returns Error when CLI exits with non-zero code`() {
+    fun `getTaskStatus returns Error when CLI exits with non-zero code`() {
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 1, stdout = "", stderr = "Error: ticket not found")
+        } returns CommandResult(exitCode = 1, stdout = "", stderr = "Error: task not found")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("MISSING-999")
+        val result = adapter.getTaskStatus("MISSING-999")
 
-        assertTrue(result is TicketLookupResult.Error)
-        assertTrue((result as TicketLookupResult.Error).message.contains("exit 1"))
+        assertTrue(result is TaskSearchResult.Error)
+        assertTrue((result as TaskSearchResult.Error).message.contains("exit 1"))
     }
 
     @Test
-    fun `getTicketStatus returns NotFound when fields are missing`() {
+    fun `getTaskStatus returns NotFound when fields are missing`() {
         val invalidResponse = """
             {
                 "key": "TEST-123"
@@ -105,49 +112,49 @@ class JiraCliAdapterTest {
         """.trimIndent()
 
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = invalidResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
-        assertEquals(TicketLookupResult.NotFound, result)
+        assertEquals(TaskSearchResult.NotFound, result)
     }
 
     @Test
-    fun `getTicketStatus returns NotFound when status is missing`() {
+    fun `getTaskStatus returns NotFound when status is missing`() {
         val invalidResponse = """
             {
                 "fields": {
-                    "summary": "Test issue"
+                    "summary": "Test task"
                 }
             }
         """.trimIndent()
 
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = invalidResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
-        assertEquals(TicketLookupResult.NotFound, result)
+        assertEquals(TaskSearchResult.NotFound, result)
     }
 
     @Test
-    fun `getTicketStatus returns NotFound when name is missing`() {
+    fun `getTaskStatus returns NotFound when name is missing`() {
         val invalidResponse = """
             {
                 "fields": {
@@ -159,23 +166,23 @@ class JiraCliAdapterTest {
         """.trimIndent()
 
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = invalidResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
-        assertEquals(TicketLookupResult.NotFound, result)
+        assertEquals(TaskSearchResult.NotFound, result)
     }
 
     @Test
-    fun `getTicketStatus returns NotFound when status name is empty`() {
+    fun `getTaskStatus returns NotFound when status name is empty`() {
         val invalidResponse = """
             {
                 "fields": {
@@ -187,43 +194,43 @@ class JiraCliAdapterTest {
         """.trimIndent()
 
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = invalidResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
-        assertEquals(TicketLookupResult.NotFound, result)
+        assertEquals(TaskSearchResult.NotFound, result)
     }
 
     @Test
-    fun `getTicketStatus returns Error when JSON is malformed`() {
+    fun `getTaskStatus returns Error when JSON is malformed`() {
         val malformedResponse = "{invalid json"
 
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = malformedResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = malformedResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result = adapter.getTicketStatus("TEST-123")
+        val result = adapter.getTaskStatus("TEST-123")
 
-        assertTrue(result is TicketLookupResult.Error)
+        assertTrue(result is TaskSearchResult.Error)
     }
 
     @Test
-    fun `getTicketStatus uses custom executable when configured`() {
+    fun `getTaskStatus uses custom executable when configured`() {
         val validResponse = """
             {
                 "fields": {
@@ -236,23 +243,23 @@ class JiraCliAdapterTest {
 
         val commandSlot = slot<List<String>>()
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = capture(commandSlot),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli(executable = "/usr/local/bin/jira")
+        val integration = Integration.Jira.toPlugin(executable = "/usr/local/bin/jira")
         val adapter = JiraCliAdapter(integration, json)
 
-        adapter.getTicketStatus("PROJ-456")
+        adapter.getTaskStatus("PROJ-456")
 
         assertEquals("/usr/local/bin/jira", commandSlot.captured[0])
     }
 
     @Test
-    fun `getTicketStatus uses default executable when not configured`() {
+    fun `getTaskStatus uses default executable when not configured`() {
         val validResponse = """
             {
                 "fields": {
@@ -265,23 +272,23 @@ class JiraCliAdapterTest {
 
         val commandSlot = slot<List<String>>()
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = capture(commandSlot),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli(executable = "")
+        val integration = Integration.Jira.toPlugin(executable = "")
         val adapter = JiraCliAdapter(integration, json)
 
-        adapter.getTicketStatus("PROJ-456")
+        adapter.getTaskStatus("PROJ-456")
 
-        assertEquals("jira", commandSlot.captured[0])
+        assertEquals("jira-cli", commandSlot.captured[0])
     }
 
     @Test
-    fun `getTicketStatus passes environment variables to CLI`() {
+    fun `getTaskStatus passes environment variables to CLI`() {
         val validResponse = """
             {
                 "fields": {
@@ -294,27 +301,27 @@ class JiraCliAdapterTest {
 
         val envSlot = slot<Map<String, String>>()
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = capture(envSlot),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
         val environment = mapOf(
             "JIRA_API_TOKEN" to "test-token",
             "JIRA_SITE" to "https://example.atlassian.net"
         )
-        val integration = ExternalIntegration.JiraCli(environment = environment)
+        val integration = Integration.Jira.toPlugin(environment = environment)
         val adapter = JiraCliAdapter(integration, json)
 
-        adapter.getTicketStatus("TEST-123")
+        adapter.getTaskStatus("TEST-123")
 
         assertEquals(environment, envSlot.captured)
     }
 
     @Test
-    fun `getTicketStatus uses custom timeout when configured`() {
+    fun `getTaskStatus uses custom timeout when configured`() {
         val validResponse = """
             {
                 "fields": {
@@ -327,23 +334,23 @@ class JiraCliAdapterTest {
 
         val timeoutSlot = slot<Long>()
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = capture(timeoutSlot)
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli(timeoutSeconds = 30)
+        val integration = Integration.Jira.toPlugin(timeoutSeconds = 30)
         val adapter = JiraCliAdapter(integration, json)
 
-        adapter.getTicketStatus("TEST-123")
+        adapter.getTaskStatus("TEST-123")
 
         assertEquals(30L, timeoutSlot.captured)
     }
 
     @Test
-    fun `getTicketStatus constructs correct command`() {
+    fun `getTaskStatus constructs correct command`() {
         val validResponse = """
             {
                 "fields": {
@@ -356,45 +363,45 @@ class JiraCliAdapterTest {
 
         val commandSlot = slot<List<String>>()
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = capture(commandSlot),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        adapter.getTicketStatus("MYPROJ-789")
+        adapter.getTaskStatus("MYPROJ-789")
 
         val command = commandSlot.captured
-        assertEquals(listOf("jira", "issue", "view", "MYPROJ-789", "--output", "json"), command)
+        assertEquals(listOf("jira-cli", "task", "view", "MYPROJ-789", "--output", "json"), command)
     }
 
     @Test
     fun `trackSession does nothing and logs debug message`() {
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
         val snapshot = SessionSnapshot(
             branch = "TEST-123/feature",
-            ticket = "TEST-123",
+            task = "TEST-123",
             startTime = Instant.fromEpochMilliseconds(1000),
             endTime = Instant.fromEpochMilliseconds(2000),
             durationMs = 1000
         )
 
-        // Should not throw and should not invoke Exec
+        // Should not throw and should not invoke CommandExecutor
         adapter.trackSession(snapshot)
 
-        verify(exactly = 0) { Exec.capture(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { Exec.passthrough(any(), any(), any(), any()) }
+        verify(exactly = 0) { CommandExecutor.capture(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { CommandExecutor.passthrough(any(), any(), any(), any()) }
     }
 
     @Test
     fun `close does not throw`() {
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
         adapter.close()
@@ -403,7 +410,7 @@ class JiraCliAdapterTest {
     }
 
     @Test
-    fun `multiple getTicketStatus calls work correctly`() {
+    fun `multiple getTaskStatus calls work correctly`() {
         val responses = listOf(
             """{"fields": {"status": {"name": "To Do"}}}""",
             """{"fields": {"status": {"name": "In Progress"}}}""",
@@ -412,30 +419,30 @@ class JiraCliAdapterTest {
 
         var callCount = 0
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
             )
         } answers {
-            ExecResult(exitCode = 0, stdout = responses[callCount++], stderr = "")
+            CommandResult(exitCode = 0, stdout = responses[callCount++], stderr = "")
         }
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        val result1 = adapter.getTicketStatus("TEST-1")
-        val result2 = adapter.getTicketStatus("TEST-2")
-        val result3 = adapter.getTicketStatus("TEST-3")
+        val result1 = adapter.getTaskStatus("TEST-1")
+        val result2 = adapter.getTaskStatus("TEST-2")
+        val result3 = adapter.getTaskStatus("TEST-3")
 
-        assertEquals(TicketLookupResult.Found("To Do"), result1)
-        assertEquals(TicketLookupResult.Found("In Progress"), result2)
-        assertEquals(TicketLookupResult.Found("Done"), result3)
+        assertEquals(TaskSearchResult.Found("To Do"), result1)
+        assertEquals(TaskSearchResult.Found("In Progress"), result2)
+        assertEquals(TaskSearchResult.Found("Done"), result3)
         assertEquals(3, callCount)
     }
 
     @Test
-    fun `getTicketStatus handles various Jira ticket ID formats`() {
+    fun `getTaskStatus handles various Jira task ID formats`() {
         val validResponse = """
             {
                 "fields": {
@@ -448,20 +455,20 @@ class JiraCliAdapterTest {
 
         val commandSlot = mutableListOf<List<String>>()
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = capture(commandSlot),
                 env = any(),
                 timeoutSeconds = any()
             )
-        } returns ExecResult(exitCode = 0, stdout = validResponse, stderr = "")
+        } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
-        // Test various ticket formats
-        adapter.getTicketStatus("PROJ-1")
-        adapter.getTicketStatus("ABC-12345")
-        adapter.getTicketStatus("X-1")
+        // Test various task formats
+        adapter.getTaskStatus("PROJ-1")
+        adapter.getTaskStatus("ABC-12345")
+        adapter.getTaskStatus("X-1")
 
         assertEquals("PROJ-1", commandSlot[0][3])
         assertEquals("ABC-12345", commandSlot[1][3])
@@ -469,7 +476,7 @@ class JiraCliAdapterTest {
     }
 
     @Test
-    fun `getTicketStatus handles status names with spaces and special characters`() {
+    fun `getTaskStatus handles status names with spaces and special characters`() {
         val statuses = listOf(
             "In Progress",
             "Ready for Review",
@@ -479,7 +486,7 @@ class JiraCliAdapterTest {
 
         var callCount = 0
         every {
-            Exec.capture(
+            CommandExecutor.capture(
                 cmd = any(),
                 env = any(),
                 timeoutSeconds = any()
@@ -487,15 +494,15 @@ class JiraCliAdapterTest {
         } answers {
             val status = statuses[callCount++]
             val response = """{"fields": {"status": {"name": "$status"}}}"""
-            ExecResult(exitCode = 0, stdout = response, stderr = "")
+            CommandResult(exitCode = 0, stdout = response, stderr = "")
         }
 
-        val integration = ExternalIntegration.JiraCli()
+        val integration = Integration.Jira.toPlugin()
         val adapter = JiraCliAdapter(integration, json)
 
         statuses.forEach { expectedStatus ->
-            val result = adapter.getTicketStatus("TEST-123")
-            assertEquals(TicketLookupResult.Found(expectedStatus), result)
+            val result = adapter.getTaskStatus("TEST-123")
+            assertEquals(TaskSearchResult.Found(expectedStatus), result)
         }
     }
 }

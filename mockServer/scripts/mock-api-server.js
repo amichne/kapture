@@ -2,7 +2,7 @@
 
 /**
  * Mock API server for kapture testing
- * Simulates ticket and tracking endpoints
+ * Simulates task and tracking endpoints
  */
 
 const http = require('http');
@@ -10,38 +10,38 @@ const url = require('url');
 
 const PORT = process.env.PORT || 8080;
 
-// Mock ticket database
-const tickets = {
+// Mock task database
+const tasks = {
   'PROJ-123': {
-    ticketId: 'PROJ-123',
+    taskId: 'PROJ-123',
     status: 'IN_PROGRESS',
     title: 'Implement user authentication',
     assignee: 'developer@example.com',
     createdAt: '2025-01-15T10:00:00Z'
   },
   'PROJ-456': {
-    ticketId: 'PROJ-456',
+    taskId: 'PROJ-456',
     status: 'READY',
     title: 'Fix login bug',
     assignee: 'developer@example.com',
     createdAt: '2025-01-16T14:30:00Z'
   },
   'PROJ-789': {
-    ticketId: 'PROJ-789',
+    taskId: 'PROJ-789',
     status: 'IN_REVIEW',
     title: 'Add API documentation',
     assignee: 'writer@example.com',
     createdAt: '2025-01-17T09:15:00Z'
   },
   'ABC-100': {
-    ticketId: 'ABC-100',
+    taskId: 'ABC-100',
     status: 'DONE',
     title: 'Refactor database layer',
     assignee: 'senior@example.com',
     createdAt: '2025-01-10T11:00:00Z'
   },
   'ABC-200': {
-    ticketId: 'ABC-200',
+    taskId: 'ABC-200',
     status: 'BLOCKED',
     title: 'Deploy to production',
     assignee: 'devops@example.com',
@@ -72,22 +72,22 @@ function handleRequest(req, res) {
     return;
   }
 
-  // GET /tickets/:ticketId/status
-  const ticketMatch = pathname.match(/^\/tickets\/([A-Z]+-\d+)\/status$/);
-  if (method === 'GET' && ticketMatch) {
-    const ticketId = ticketMatch[1];
-    const ticket = tickets[ticketId];
+  // GET /tasks/:taskId/status
+  const taskMatch = pathname.match(/^\/tasks\/([A-Z]+-\d+)\/status$/);
+  if (method === 'GET' && taskMatch) {
+    const taskId = taskMatch[1];
+    const task = tasks[taskId];
 
-    if (ticket) {
-      console.log(`  → Found ticket: ${ticket.status}`);
+    if (task) {
+      console.log(`  → Found task: ${task.status}`);
       res.writeHead(200);
-      res.end(JSON.stringify(ticket, null, 2));
+      res.end(JSON.stringify(task, null, 2));
     } else {
-      console.log(`  → Ticket not found`);
+      console.log(`  → Task not found`);
       res.writeHead(404);
       res.end(JSON.stringify({
-        error: 'Ticket not found',
-        ticketId: ticketId
+        error: 'Task not found',
+        taskId: taskId
       }, null, 2));
     }
     return;
@@ -109,7 +109,7 @@ function handleRequest(req, res) {
 
         console.log(`  → Tracked event:`, {
           command: event.command,
-          ticket: event.ticket,
+          task: event.task,
           duration: event.durationMs + 'ms',
           exitCode: event.exitCode
         });
@@ -144,19 +144,19 @@ function handleRequest(req, res) {
     return;
   }
 
-  // GET /tickets (list all)
-  if (method === 'GET' && pathname === '/tickets') {
+  // GET /tasks (list all)
+  if (method === 'GET' && pathname === '/tasks') {
     res.writeHead(200);
     res.end(JSON.stringify({
-      tickets: Object.values(tickets)
+      tasks: Object.values(tasks)
     }, null, 2));
     return;
   }
 
-  // PUT /tickets/:ticketId/status (update status for testing)
-  const updateMatch = pathname.match(/^\/tickets\/([A-Z]+-\d+)\/status$/);
+  // PUT /tasks/:taskId/status (update status for testing)
+  const updateMatch = pathname.match(/^\/tasks\/([A-Z]+-\d+)\/status$/);
   if (method === 'PUT' && updateMatch) {
-    const ticketId = updateMatch[1];
+    const taskId = updateMatch[1];
     let body = '';
 
     req.on('data', chunk => {
@@ -166,14 +166,14 @@ function handleRequest(req, res) {
     req.on('end', () => {
       try {
         const update = JSON.parse(body);
-        if (tickets[ticketId]) {
-          tickets[ticketId].status = update.status;
-          console.log(`  → Updated ${ticketId} to ${update.status}`);
+        if (tasks[taskId]) {
+          tasks[taskId].status = update.status;
+          console.log(`  → Updated ${taskId} to ${update.status}`);
           res.writeHead(200);
-          res.end(JSON.stringify(tickets[ticketId], null, 2));
+          res.end(JSON.stringify(tasks[taskId], null, 2));
         } else {
           res.writeHead(404);
-          res.end(JSON.stringify({ error: 'Ticket not found' }));
+          res.end(JSON.stringify({ error: 'Task not found' }));
         }
       } catch (err) {
         res.writeHead(400);
@@ -189,7 +189,7 @@ function handleRequest(req, res) {
     res.end(JSON.stringify({
       status: 'healthy',
       uptime: process.uptime(),
-      tickets: Object.keys(tickets).length,
+      tasks: Object.keys(tasks).length,
       events: events.length
     }, null, 2));
     return;
@@ -202,9 +202,9 @@ function handleRequest(req, res) {
     error: 'Not found',
     path: pathname,
     availableEndpoints: [
-      'GET /tickets',
-      'GET /tickets/:ticketId/status',
-      'PUT /tickets/:ticketId/status',
+      'GET /tasks',
+      'GET /tasks/:taskId/status',
+      'PUT /tasks/:taskId/status',
       'POST /events/track',
       'GET /events',
       'GET /health'
@@ -223,15 +223,15 @@ server.listen(PORT, () => {
   console.log('');
   console.log('Available endpoints:');
   console.log(`  GET  /health`);
-  console.log(`  GET  /tickets`);
-  console.log(`  GET  /tickets/:ticketId/status`);
-  console.log(`  PUT  /tickets/:ticketId/status`);
+  console.log(`  GET  /tasks`);
+  console.log(`  GET  /tasks/:taskId/status`);
+  console.log(`  PUT  /tasks/:taskId/status`);
   console.log(`  POST /events/track`);
   console.log(`  GET  /events`);
   console.log('');
-  console.log('Mock tickets:');
-  Object.values(tickets).forEach(t => {
-    console.log(`  ${t.ticketId.padEnd(10)} ${t.status.padEnd(15)} ${t.title}`);
+  console.log('Mock tasks:');
+  Object.values(tasks).forEach(t => {
+    console.log(`  ${t.taskId.padEnd(10)} ${t.status.padEnd(15)} ${t.title}`);
   });
   console.log('');
   console.log('Press Ctrl+C to stop');

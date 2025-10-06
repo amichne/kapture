@@ -1,6 +1,11 @@
 package io.amichne.kapture.core.http.auth
 
-import io.amichne.kapture.core.config.AuthConfig
+import io.amichne.kapture.core.authenticator.internal.BasicAuthenticator
+import io.amichne.kapture.core.authenticator.internal.BearerAuthenticator
+import io.amichne.kapture.core.authenticator.internal.JiraPersonalAccessToken
+import io.amichne.kapture.core.authenticator.internal.NoOpAuthenticator
+import io.amichne.kapture.core.authenticator.RequestAuthenticator
+import io.amichne.kapture.core.model.config.Authentication
 import io.ktor.client.request.*
 import io.ktor.http.*
 import org.junit.jupiter.api.Assertions.*
@@ -11,7 +16,7 @@ class RequestAuthenticatorTest {
 
     @Test
     fun `from creates NoOpAuthenticator for None auth`() {
-        val authenticator = RequestAuthenticator.from(AuthConfig.None)
+        val authenticator = RequestAuthenticator.from(Authentication.None)
 
         val builder = HttpRequestBuilder()
         authenticator.apply(builder)
@@ -21,7 +26,7 @@ class RequestAuthenticatorTest {
 
     @Test
     fun `from creates BearerAuthenticator for Bearer auth`() {
-        val authenticator = RequestAuthenticator.from(AuthConfig.Bearer("test-token"))
+        val authenticator = RequestAuthenticator.from(Authentication.Bearer("test-token"))
 
         val builder = HttpRequestBuilder()
         authenticator.apply(builder)
@@ -31,7 +36,7 @@ class RequestAuthenticatorTest {
 
     @Test
     fun `from creates BasicAuthenticator for Basic auth`() {
-        val authenticator = RequestAuthenticator.from(AuthConfig.Basic("user", "pass"))
+        val authenticator = RequestAuthenticator.from(Authentication.Basic("user", "pass"))
 
         val builder = HttpRequestBuilder()
         authenticator.apply(builder)
@@ -48,7 +53,7 @@ class RequestAuthenticatorTest {
     @Test
     fun `from creates JiraPatAuthenticator for JiraPat auth`() {
         val authenticator = RequestAuthenticator.from(
-            AuthConfig.JiraPat("user@example.com", "api-token")
+            Authentication.PersonalAccessToken("user@example.com", "api-token")
         )
 
         val builder = HttpRequestBuilder()
@@ -115,7 +120,7 @@ class RequestAuthenticatorTest {
 
     @Test
     fun `JiraPatAuthenticator uses Basic auth with email and token`() {
-        val authenticator = JiraPatAuthenticator("jira.user@company.com", "ATATT3xFfGF0...")
+        val authenticator = JiraPersonalAccessToken("jira.user@company.com", "ATATT3xFfGF0...")
         val builder = HttpRequestBuilder()
 
         authenticator.apply(builder)
@@ -182,7 +187,7 @@ class RequestAuthenticatorTest {
 
     @Test
     fun `JiraPatAuthenticator with blank email does not add header`() {
-        val authenticator = JiraPatAuthenticator("", "token")
+        val authenticator = JiraPersonalAccessToken("", "token")
         val builder = HttpRequestBuilder()
 
         authenticator.apply(builder)
@@ -193,7 +198,7 @@ class RequestAuthenticatorTest {
 
     @Test
     fun `JiraPatAuthenticator with blank token does not add header`() {
-        val authenticator = JiraPatAuthenticator("email@example.com", "")
+        val authenticator = JiraPersonalAccessToken("email@example.com", "")
         val builder = HttpRequestBuilder()
 
         authenticator.apply(builder)

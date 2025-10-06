@@ -1,15 +1,15 @@
 package io.amichne.kapture.interceptors.session
 
-import io.amichne.kapture.core.config.Config
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.http.adapter.Adapter
-import io.amichne.kapture.core.http.adapter.SubtaskCreationResult
-import io.amichne.kapture.core.http.adapter.TransitionResult
-import io.amichne.kapture.core.http.adapter.IssueDetailsResult
-import io.amichne.kapture.core.model.Invocation
-import io.amichne.kapture.core.model.SessionSnapshot
-import io.amichne.kapture.core.model.TimeSession
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.adapter.Adapter
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.session.SessionTimekeeper
 import io.amichne.kapture.interceptors.support.GitTestRepository
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
@@ -45,20 +45,20 @@ class SessionTrackingInterceptorTest {
     @Test
     fun `starts and rotates session when timeout elapses`() {
         val tempDir = Files.createTempDirectory("session-test").toFile()
-        val config = Config(localStateRoot = tempDir.absolutePath)
+        val config = Config(root = tempDir.absolutePath)
         val clock = MutableClock(Instant.parse("2024-01-01T00:00:00Z"))
         val snapshots = mutableListOf<SessionSnapshot>()
         val client = ExternalClient.wrap(object : Adapter {
-            override fun getTicketStatus(ticketId: String): TicketLookupResult = TicketLookupResult.Found("IN_PROGRESS")
+            override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
             override fun trackSession(snapshot: SessionSnapshot) {
                 snapshots += snapshot
             }
             override fun createSubtask(parentId: String, title: String?) = SubtaskCreationResult.Failure("Not implemented")
-            override fun transitionIssue(issueId: String, targetStatus: String) = TransitionResult.Failure("Not implemented")
-            override fun getIssueDetails(issueId: String) = IssueDetailsResult.Failure("Not implemented")
+            override fun transitionTask(taskId: String, targetStatus: String) = TaskTransitionResult.Failure("Not implemented")
+            override fun getTaskDetails(taskId: String) = TaskDetailsResult.Failure("Not implemented")
             override fun close() {}
         })
-        val invocation = Invocation(
+        val commandInvocation = CommandInvocation(
             listOf("status"),
             repo.gitPath(),
             repo.root.toFile(),
@@ -66,53 +66,53 @@ class SessionTrackingInterceptorTest {
         )
         val interceptor = SessionTrackingInterceptor(clock = clock, json = json)
 
-        interceptor.after(invocation, 0, config, client)
+        interceptor.after(commandInvocation, 0, config, client)
         val sessionFile = File(tempDir, "session.json")
         assertTrue(sessionFile.exists())
-        val firstSession = json.decodeFromString<TimeSession>(sessionFile.readText())
+        val firstSession = json.decodeFromString<SessionTimekeeper>(sessionFile.readText())
         assertEquals("PROJ-9/feature", firstSession.branch)
 
         clock.advance(1.minutes)
-        interceptor.after(invocation, 0, config, client)
-        val updatedSession = json.decodeFromString<TimeSession>(sessionFile.readText())
+        interceptor.after(commandInvocation, 0, config, client)
+        val updatedSession = json.decodeFromString<SessionTimekeeper>(sessionFile.readText())
         assertEquals("PROJ-9/feature", updatedSession.branch)
 
         clock.advance(config.sessionTrackingIntervalMs.milliseconds + 60_000.milliseconds)
-        interceptor.after(invocation, 0, config, client)
+        interceptor.after(commandInvocation, 0, config, client)
 
         assertEquals(1, snapshots.size)
         val snapshot = snapshots.first()
         assertEquals("PROJ-9/feature", snapshot.branch)
         assertTrue(snapshot.durationMs >= config.sessionTrackingIntervalMs)
-        assertNotNull(json.decodeFromString<TimeSession>(sessionFile.readText()))
+        assertNotNull(json.decodeFromString<SessionTimekeeper>(sessionFile.readText()))
     }
 
     @Test
     fun `closes session when branch changes`() {
         val tempDir = Files.createTempDirectory("session-branch-test").toFile()
-        val config = Config(localStateRoot = tempDir.absolutePath)
+        val config = Config(root = tempDir.absolutePath)
         val clock = MutableClock(Instant.parse("2024-01-02T00:00:00Z"))
         val snapshots = mutableListOf<SessionSnapshot>()
         val client = ExternalClient.wrap(object : Adapter {
-            override fun getTicketStatus(ticketId: String): TicketLookupResult = TicketLookupResult.Found("IN_PROGRESS")
+            override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
             override fun trackSession(snapshot: SessionSnapshot) { snapshots += snapshot }
             override fun createSubtask(parentId: String, title: String?) = SubtaskCreationResult.Failure("Not implemented")
-            override fun transitionIssue(issueId: String, targetStatus: String) = TransitionResult.Failure("Not implemented")
-            override fun getIssueDetails(issueId: String) = IssueDetailsResult.Failure("Not implemented")
+            override fun transitionTask(taskId: String, targetStatus: String) = TaskTransitionResult.Failure("Not implemented")
+            override fun getTaskDetails(taskId: String) = TaskDetailsResult.Failure("Not implemented")
             override fun close() {}
         })
         val interceptor = SessionTrackingInterceptor(clock = clock, json = json)
 
-        val firstInvocation = Invocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
-        interceptor.after(firstInvocation, 0, config, client)
+        val firstCommandInvocation = CommandInvocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
+        interceptor.after(firstCommandInvocation, 0, config, client)
 
         repo.checkoutBranch("PROJ-10/fix", create = true)
-        val secondInvocation = Invocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
+        val secondCommandInvocation = CommandInvocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
         clock.advance(5.minutes)
-        interceptor.after(secondInvocation, 0, config, client)
+        interceptor.after(secondCommandInvocation, 0, config, client)
 
         val sessionFile = File(tempDir, "session.json")
-        val activeSession = json.decodeFromString<TimeSession>(sessionFile.readText())
+        val activeSession = json.decodeFromString<SessionTimekeeper>(sessionFile.readText())
         assertEquals("PROJ-10/fix", activeSession.branch)
         assertEquals(1, snapshots.size)
         assertEquals("PROJ-9/feature", snapshots.first().branch)

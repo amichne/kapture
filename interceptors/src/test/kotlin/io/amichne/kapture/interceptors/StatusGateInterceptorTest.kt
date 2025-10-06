@@ -1,15 +1,16 @@
 package io.amichne.kapture.interceptors
 
-import io.amichne.kapture.core.config.Config
-import io.amichne.kapture.core.config.Config.Enforcement.Mode
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.http.TicketLookupResult
-import io.amichne.kapture.core.http.adapter.Adapter
-import io.amichne.kapture.core.http.adapter.SubtaskCreationResult
-import io.amichne.kapture.core.http.adapter.TransitionResult
-import io.amichne.kapture.core.http.adapter.IssueDetailsResult
-import io.amichne.kapture.core.model.Invocation
-import io.amichne.kapture.core.model.SessionSnapshot
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.model.config.Enforcement.Mode
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.adapter.Adapter
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Enforcement
+import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.interceptors.support.GitTestRepository
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,30 +34,30 @@ class StatusGateInterceptorTest {
     }
 
     @Test
-    fun `blocks commit when ticket status not allowed`() {
+    fun `blocks commit when task status not allowed`() {
         val config = Config(
-            enforcement = Config.Enforcement(
+            enforcement = Enforcement(
                 branchPolicy = Mode.OFF,
                 statusCheck = Mode.BLOCK
             )
         )
         val interceptor = StatusGateInterceptor()
-        val invocation = Invocation(
+        val commandInvocation = CommandInvocation(
             listOf("commit"),
             repo.gitPath(),
             repo.root.toFile(),
             repo.environment()
         )
         val client = ExternalClient.wrap(object : Adapter {
-            override fun getTicketStatus(ticketId: String): TicketLookupResult = TicketLookupResult.Found("BLOCKED")
+            override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("BLOCKED")
             override fun trackSession(snapshot: SessionSnapshot) {}
             override fun createSubtask(parentId: String, title: String?) = SubtaskCreationResult.Failure("Not implemented")
-            override fun transitionIssue(issueId: String, targetStatus: String) = TransitionResult.Failure("Not implemented")
-            override fun getIssueDetails(issueId: String) = IssueDetailsResult.Failure("Not implemented")
+            override fun transitionTask(taskId: String, targetStatus: String) = TaskTransitionResult.Failure("Not implemented")
+            override fun getTaskDetails(taskId: String) = TaskDetailsResult.Failure("Not implemented")
             override fun close() {}
         })
 
-        val exitCode = interceptor.before(invocation, config, client)
+        val exitCode = interceptor.before(commandInvocation, config, client)
         assertEquals(StatusGateInterceptor.COMMIT_EXIT, exitCode)
     }
 }

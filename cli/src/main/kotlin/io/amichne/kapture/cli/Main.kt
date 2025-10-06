@@ -1,11 +1,12 @@
 package io.amichne.kapture.cli
 
-import io.amichne.kapture.core.config.Config
-import io.amichne.kapture.core.exec.Exec
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.git.RealGitResolver
-import io.amichne.kapture.core.http.ExternalClient
-import io.amichne.kapture.core.config.ExternalIntegration
-import io.amichne.kapture.core.model.Invocation
+import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.model.config.Plugin
+import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.util.ConfigLoader
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.interceptors.InterceptorRegistry
 import java.io.File
@@ -18,7 +19,7 @@ import kotlin.system.exitProcess
  */
 fun main(rawArgs: Array<String>) {
     val args = rawArgs.toList()
-    val config = Config.load()
+    val config = ConfigLoader.load()
     val realGit = try {
         RealGitResolver.resolve(config.realGitHint)
     } catch (ex: IllegalStateException) {
@@ -37,23 +38,23 @@ fun main(rawArgs: Array<String>) {
         }
 
         if (isCompletionOrHelp(args)) {
-            val exitCode = Exec.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
+            val exitCode = CommandExecutor.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
             exitProcess(exitCode)
         }
 
-        val invocation = Invocation(args, realGit, workDir, env)
+        val commandInvocation = CommandInvocation(args, realGit, workDir, env)
 
         for (interceptor in InterceptorRegistry.interceptors) {
-            val exitCode = interceptor.before(invocation, config, client)
+            val exitCode = interceptor.before(commandInvocation, config, client)
             if (exitCode != null) {
                 exitProcess(exitCode)
             }
         }
 
-        val exitCode = Exec.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
+        val exitCode = CommandExecutor.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
 
         for (interceptor in InterceptorRegistry.interceptors) {
-            interceptor.after(invocation, exitCode, config, client)
+            interceptor.after(commandInvocation, exitCode, config, client)
         }
 
         exitProcess(exitCode)
@@ -69,7 +70,7 @@ fun isCompletionOrHelp(args: List<String>): Boolean {
     if (args.isEmpty()) return false
     if (args.any { it.startsWith("--list-cmds") }) return true
     val first = args.first().lowercase()
-    return first in setOf("help", "--version", "--exec-path", "config", "rev-parse", "for-each-ref")
+    return first in setOf("help", "--version", "--command-path", "config", "rev-parse", "for-each-ref")
 }
 
 private fun runKaptureCommand(
@@ -86,9 +87,9 @@ private fun runKaptureCommand(
                 println("Kapture:")
                 println("  real git: $realGit")
                 val externalDescription = when (val ext = config.external) {
-                    is ExternalIntegration.Rest ->
+                    is Plugin.Http ->
                         "REST API (${ext.baseUrl})"
-                    is ExternalIntegration.JiraCli ->
+                    is Plugin.Cli ->
                         "jira-cli (${ext.executable})"
                 }
                 println("  external integration: $externalDescription")
