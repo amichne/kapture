@@ -58,10 +58,8 @@ jobs:
 
       - name: Build artifacts
         run: |
-          ./gradlew shadowJar :cli:nativeCompile --no-daemon
+          ./gradlew :cli:nativeCompile --no-daemon
           mkdir -p dist
-          cp cli/build/libs/kapture.jar dist/kapture.jar
-          (cd dist && sha256sum kapture.jar > kapture.jar.sha256)
           cp cli/build/native/nativeCompile/kapture dist/kapture-linux-x64
           chmod +x dist/kapture-linux-x64
           (cd dist && sha256sum kapture-linux-x64 > kapture-linux-x64.sha256)
@@ -89,8 +87,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/kapture.jar
-            dist/kapture.jar.sha256
             dist/kapture-linux-x64
             dist/kapture-linux-x64.sha256
         env:
