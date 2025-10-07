@@ -1,8 +1,10 @@
 package io.amichne.kapture.core.command
 
 import io.amichne.kapture.core.model.command.CommandResult
+import io.amichne.kapture.core.util.Environment
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
@@ -23,20 +25,30 @@ object CommandExecutor {
         workDir: File? = null,
         env: Map<String, String> = emptyMap(),
         timeoutSeconds: Long = DEFAULT_TIMEOUT_SECONDS
-    ): Int {
-        require(cmd.isNotEmpty()) { "Command must not be empty" }
-        val processBuilder = ProcessBuilder(cmd)
-        workDir?.let(processBuilder::directory)
-        processBuilder.inheritIO()
-        applyEnvironment(processBuilder, env)
-        val process = processBuilder.start()
-        val finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
-        if (!finished) {
-            process.destroyForcibly()
-            return -1
+    ): Int = apply { require(cmd.isNotEmpty()) { "Command must not be empty" } }
+        .run {
+            ProcessBuilder(cmd).apply {
+                workDir?.let(this::directory)
+                inheritIO()
+                applyEnvironment(this, env)
+            }.let { processBuilder ->
+                try {
+                    processBuilder.start().let {
+                        if (!it.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+                            it.destroyForcibly()
+                        } else {
+                            it.exitValue()
+                        }
+                        -1
+                    }
+                } catch (ex: Exception) {
+                    handleFailure(cmd, ex) { message ->
+                        System.err.println("[kapture] ERROR: $message")
+                        -1
+                    }
+                }
+            }
         }
-        return process.exitValue()
-    }
 
     /**
      * Executes the command while capturing stdout and stderr into memory,
@@ -49,31 +61,103 @@ object CommandExecutor {
         env: Map<String, String> = emptyMap(),
         charset: Charset = Charsets.UTF_8,
         timeoutSeconds: Long = DEFAULT_TIMEOUT_SECONDS
-    ): CommandResult {
-        require(cmd.isNotEmpty()) { "Command must not be empty" }
-        val processBuilder = ProcessBuilder(cmd)
-        workDir?.let(processBuilder::directory)
-        applyEnvironment(processBuilder, env)
-        val process = processBuilder.start()
+    ): CommandResult = apply { require(cmd.isNotEmpty()) { "Command must not be empty" } }
+        .run {
+            ProcessBuilder(cmd).apply {
+                workDir?.let(this::directory)
+                applyEnvironment(this, env)
+            }.let { processBuilder ->
+                try {
+                    processBuilder.start().let { process ->
+                        val stdout = ByteArrayOutputStream()
+                        val stderr = ByteArrayOutputStream()
 
-        val stdout = ByteArrayOutputStream()
-        val stderr = ByteArrayOutputStream()
+                        process.inputStream.use { input -> stdout.writeBytes(input.readAllBytes()) }
+                        process.errorStream.use { error -> stderr.writeBytes(error.readAllBytes()) }
 
-        process.inputStream.use { input -> stdout.writeBytes(input.readAllBytes()) }
-        process.errorStream.use { error -> stderr.writeBytes(error.readAllBytes()) }
-
-        val finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
-        if (!finished) {
-            process.destroyForcibly()
-            return CommandResult(-1, stdout.toString(charset), stderr.toString(charset))
+                        if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+                            process.destroyForcibly()
+                            CommandResult(-1, stdout.toString(charset), stderr.toString(charset))
+                        } else {
+                            CommandResult(
+                                process.exitValue(),
+                                stdout.toString(charset).trimEnd(),
+                                stderr.toString(charset).trimEnd()
+                            )
+                        }
+                    }
+                } catch (ex: Exception) {
+                    handleFailure(cmd, ex) { message ->
+                        CommandResult(-1, "", message)
+                    }
+                }
+            }
         }
 
-        return CommandResult(
-            process.exitValue(),
-            stdout.toString(charset).trimEnd(),
-            stderr.toString(charset).trimEnd()
-        )
+    private fun <T> handleFailure(
+        cmd: List<String>,
+        throwable: Exception,
+        onFailure: (String) -> T
+    ): T {
+        if (throwable is InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+
+        val message = buildFailureMessage(cmd, throwable)
+        Environment.debug {
+            val commandDisplay = formatCommand(cmd)
+            val detail = throwable.message?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
+            "Command failure for '$commandDisplay': ${throwable::class.java.simpleName}$detail"
+        }
+
+        if (Environment.debugEnabled) {
+            throwable.printStackTrace(System.err)
+        }
+
+        return onFailure(message)
     }
+
+    private fun buildFailureMessage(
+        cmd: List<String>,
+        throwable: Exception
+    ): String {
+        val commandDisplay = formatCommand(cmd)
+        val executable = cmd.firstOrNull()?.takeIf { it.isNotBlank() }
+
+        return when (throwable) {
+            is InterruptedException -> "Command '$commandDisplay' was interrupted"
+            is IOException -> {
+                val rawDetail = throwable.message?.takeIf { it.isNotBlank() }
+                val detail = rawDetail?.let { sanitizeFailureDetail(it, executable) }
+                val suggestion = executable?.let { "Ensure '$it' is installed and available on PATH" }
+                val segments = mutableListOf("Unable to run '$commandDisplay'")
+                detail?.let { segments += it.trim().trimEnd('.') }
+                suggestion?.let { segments += it }
+                segments.joinToString(". ")
+            }
+
+            else -> {
+                val detail = throwable.message?.takeIf { it.isNotBlank() }
+                if (detail != null) {
+                    "Command '$commandDisplay' failed: ${detail.trim()}"
+                } else {
+                    "Command '$commandDisplay' failed with ${throwable::class.java.simpleName}"
+                }
+            }
+        }
+    }
+
+    private fun sanitizeFailureDetail(
+        detail: String,
+        executable: String?
+    ): String {
+        if (executable.isNullOrBlank()) return detail.trim()
+        val pattern = Regex("Cannot run program \"${Regex.escape(executable)}\"(?: \\(.+?\\))?:\\s*")
+        val sanitized = pattern.replace(detail, "").trim()
+        return if (sanitized.isNotEmpty()) sanitized else detail.trim()
+    }
+
+    private fun formatCommand(cmd: List<String>): String = cmd.joinToString(" ").ifBlank { "<no command>" }
 
     private fun applyEnvironment(
         processBuilder: ProcessBuilder,
