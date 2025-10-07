@@ -1,7 +1,10 @@
 package io.amichne.kapture.core.http
 
 import io.amichne.kapture.core.model.task.TaskSearchResult
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class TaskSearchResultTest {

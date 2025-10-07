@@ -1,9 +1,9 @@
 package io.amichne.kapture.interceptors.session
 
-import io.amichne.kapture.core.model.config.Config
-import io.amichne.kapture.core.git.BranchUtils
 import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.git.BranchUtils
 import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.session.SessionTimekeeper
 import io.amichne.kapture.core.util.Environment

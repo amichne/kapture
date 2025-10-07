@@ -16,7 +16,10 @@ interface Adapter : AutoCloseable {
      * @param title The subtask title (optional - will prompt if not provided)
      * @return SubtaskCreationResult containing the created subtask key or error
      */
-    fun createSubtask(parentId: String, title: String? = null): SubtaskCreationResult
+    fun createSubtask(
+        parentId: String,
+        title: String? = null
+    ): SubtaskCreationResult
 
     /**
      * Transitions a task to a new status.
@@ -24,7 +27,10 @@ interface Adapter : AutoCloseable {
      * @param targetStatus The target status name (e.g., "In Progress")
      * @return TaskTransitionResult containing success/failure information
      */
-    fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult
+    fun transitionTask(
+        taskId: String,
+        targetStatus: String
+    ): TaskTransitionResult
 
     /**
      * Retrieves full task details including description and links.

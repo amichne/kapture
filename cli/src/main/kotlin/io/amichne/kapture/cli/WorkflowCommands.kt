@@ -1,12 +1,12 @@
 package io.amichne.kapture.cli
 
-import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.git.BranchUtils
-import io.amichne.kapture.core.ExternalClient
-import io.amichne.kapture.core.model.task.TaskSearchResult
-import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.TaskSearchResult
 import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.util.Environment
 import java.io.File
@@ -21,7 +21,11 @@ import kotlin.system.exitProcess
  */
 object WorkflowCommands {
 
-    fun executeSubtask(args: List<String>, config: Config, client: ExternalClient<*>) {
+    fun executeSubtask(
+        args: List<String>,
+        config: Config,
+        client: ExternalClient<*>
+    ) {
         if (args.isEmpty()) {
             System.err.println("Usage: git kapture subtask <PARENT-ID> [subtask-title]")
             exitProcess(1)
@@ -37,6 +41,7 @@ object WorkflowCommands {
                 println("✓ Created subtask: ${result.subtaskKey}")
                 println("  Parent: ${parentId}")
             }
+
             is SubtaskCreationResult.Failure -> {
                 System.err.println("✗ Failed to create subtask: ${result.message}")
                 exitProcess(1)
@@ -44,7 +49,13 @@ object WorkflowCommands {
         }
     }
 
-    fun executeBranch(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
+    fun executeBranch(
+        args: List<String>,
+        config: Config,
+        workDir: File,
+        env: Map<String, String>,
+        client: ExternalClient<*>
+    ) {
         if (args.isEmpty()) {
             System.err.println("Usage: git kapture branch <SUBTASK-ID>")
             exitProcess(1)
@@ -63,10 +74,12 @@ object WorkflowCommands {
                     exitProcess(1)
                 }
             }
+
             TaskSearchResult.NotFound -> {
                 System.err.println("✗ Subtask ${subtaskId} not found")
                 exitProcess(1)
             }
+
             is TaskSearchResult.Error -> {
                 System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
                 exitProcess(1)
@@ -95,6 +108,7 @@ object WorkflowCommands {
                 println("✓ Branch created: ${branchName}")
                 println("✓ Subtask ${subtaskId} → In Progress")
             }
+
             is TaskTransitionResult.Failure -> {
                 System.err.println("⚠ Branch created but failed to transition subtask: ${transitionResult.message}")
                 exitProcess(1)
@@ -102,7 +116,13 @@ object WorkflowCommands {
         }
     }
 
-    fun executeReview(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
+    fun executeReview(
+        args: List<String>,
+        config: Config,
+        workDir: File,
+        env: Map<String, String>,
+        client: ExternalClient<*>
+    ) {
         // Get current branch and extract task
         val currentBranchResult = CommandExecutor.capture(
             cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
@@ -135,10 +155,12 @@ object WorkflowCommands {
                     exitProcess(1)
                 }
             }
+
             TaskSearchResult.NotFound -> {
                 System.err.println("✗ Subtask ${subtaskId} not found")
                 exitProcess(1)
             }
+
             is TaskSearchResult.Error -> {
                 System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
                 exitProcess(1)
@@ -151,6 +173,7 @@ object WorkflowCommands {
             is TaskDetailsResult.Success -> {
                 Pair(taskDetails.summary, buildPullRequestBody(taskDetails, client))
             }
+
             is TaskDetailsResult.Failure -> {
                 System.err.println("⚠ Could not fetch task details: ${taskDetails.message}")
                 Pair(subtaskId, "")
@@ -197,6 +220,7 @@ object WorkflowCommands {
                 println("✓ Subtask ${subtaskId} → Code Review")
                 println("\n${prResult.stdout}")
             }
+
             is TaskTransitionResult.Failure -> {
                 System.err.println("⚠ PR created but failed to transition subtask: ${transitionResult.message}")
                 println("\n${prResult.stdout}")
@@ -204,7 +228,13 @@ object WorkflowCommands {
         }
     }
 
-    fun executeMerge(args: List<String>, config: Config, workDir: File, env: Map<String, String>, client: ExternalClient<*>) {
+    fun executeMerge(
+        args: List<String>,
+        config: Config,
+        workDir: File,
+        env: Map<String, String>,
+        client: ExternalClient<*>
+    ) {
         // Get current branch and extract task
         val currentBranchResult = CommandExecutor.capture(
             cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
@@ -236,10 +266,12 @@ object WorkflowCommands {
                     exitProcess(1)
                 }
             }
+
             TaskSearchResult.NotFound -> {
                 System.err.println("✗ Subtask ${subtaskId} not found")
                 exitProcess(1)
             }
+
             is TaskSearchResult.Error -> {
                 System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
                 exitProcess(1)
@@ -266,23 +298,31 @@ object WorkflowCommands {
                 println("✓ Pull request merged")
                 println("✓ Subtask ${subtaskId} → Closed")
             }
+
             is TaskTransitionResult.Failure -> {
                 System.err.println("⚠ PR merged but failed to transition subtask: ${transitionResult.message}")
             }
         }
     }
 
-    private fun generateBranchName(taskId: String, config: Config): String {
+    private fun generateBranchName(
+        taskId: String,
+        config: Config
+    ): String {
         // Extract pattern format and generate branch name
         // For now, use a simple format: TASK-ID/description
         return "${taskId}/dev"
     }
 
-    private fun buildPullRequestBody(details: TaskDetailsResult.Success, client: ExternalClient<*>): String {
+    private fun buildPullRequestBody(
+        details: TaskDetailsResult.Success,
+        client: ExternalClient<*>
+    ): String {
         val sections = mutableListOf<String>()
 
         // Add Jira task details section
-        sections.add("""
+        sections.add(
+            """
             <details>
             <summary>📋 Jira Task Details</summary>
 
@@ -291,26 +331,33 @@ object WorkflowCommands {
 
             ${details.description.ifBlank { "_No description provided_" }}
             </details>
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         // Add related PRs section (sibling subtasks)
         details.parentKey?.let { parentKey ->
             val relatedPrs = findRelatedPullRequests(parentKey, details.key, client)
             if (relatedPrs.isNotEmpty()) {
-                sections.add("""
+                sections.add(
+                    """
                     <details>
                     <summary>🔗 Related Pull Requests</summary>
 
                     ${relatedPrs.joinToString("\n")}
                     </details>
-                """.trimIndent())
+                """.trimIndent()
+                )
             }
         }
 
         return sections.joinToString("\n\n")
     }
 
-    private fun findRelatedPullRequests(parentKey: String, currentKey: String, client: ExternalClient<*>): List<String> {
+    private fun findRelatedPullRequests(
+        parentKey: String,
+        currentKey: String,
+        client: ExternalClient<*>
+    ): List<String> {
         // This would query Jira for sibling subtasks and find their associated PRs
         // For now, return empty list as this requires more complex JQL queries
         Environment.debug { "Finding related PRs for parent ${parentKey}, excluding ${currentKey}" }

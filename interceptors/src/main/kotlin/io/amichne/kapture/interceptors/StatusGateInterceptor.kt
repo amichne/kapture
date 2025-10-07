@@ -1,12 +1,12 @@
 package io.amichne.kapture.interceptors
 
-import io.amichne.kapture.core.model.config.Config
-import io.amichne.kapture.core.git.BranchUtils
 import io.amichne.kapture.core.ExternalClient
-import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.git.BranchUtils
 import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.config.Enforcement
 import io.amichne.kapture.core.model.config.StatusRules
+import io.amichne.kapture.core.model.task.TaskSearchResult
 
 class StatusGateInterceptor : GitInterceptor {
     /**

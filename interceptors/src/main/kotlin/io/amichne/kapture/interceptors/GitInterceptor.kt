@@ -1,8 +1,8 @@
 package io.amichne.kapture.interceptors
 
-import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Config
 
 interface GitInterceptor {
     /**

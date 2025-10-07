@@ -1,12 +1,15 @@
 package io.amichne.kapture.core.config
 
-import io.amichne.kapture.core.adapter.internal.jira.JiraCliDefaults
-import io.amichne.kapture.core.model.config.Config
-import io.amichne.kapture.core.model.config.Enforcement
-import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.util.ConfigLoader
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -31,7 +34,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         // Uses defaults for external
         assertTrue(config.external is Plugin.Cli)
         assertTrue(config.trackingEnabled)
@@ -41,7 +44,7 @@ class ConfigTest {
     @Test
     fun `load falls back to defaults when file missing`() {
         val config = ConfigLoader.load(tempDir.resolve("missing.json"))
-        
+
         val external = config.external as Plugin.Cli
         assertEquals("jira-cli", external.executable)
         assertTrue(config.trackingEnabled)
@@ -74,7 +77,7 @@ class ConfigTest {
     @Test
     fun `load creates state root directory if missing`() {
         val config = ConfigLoader.load(tempDir.resolve("nonexistent.json"))
-        
+
         val stateRoot = Path.of(config.root)
         // State root should be ensured to exist
         assertNotNull(config.root)
@@ -86,7 +89,7 @@ class ConfigTest {
             baseUrl = "https://api.example.com",
             timeoutMs = 5000
         )
-        
+
         assertEquals("https://api.example.com", httpConfig.baseUrl)
         assertEquals(5000L, httpConfig.timeoutMs)
         assertEquals(Authentication.None, httpConfig.auth)
@@ -99,7 +102,7 @@ class ConfigTest {
             environment = mapOf("KEY" to "value"),
             timeoutSeconds = 45
         )
-        
+
         assertEquals("/usr/local/bin/custom-jira", cliConfig.executable)
         assertEquals(45L, cliConfig.timeoutSeconds)
         assertTrue(cliConfig.environment.containsKey("KEY"))
@@ -118,7 +121,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         assertEquals("^(?<task>CUSTOM-\\d+).*$", config.branchPattern)
     }
 
@@ -138,7 +141,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         assertNotNull(config.enforcement)
     }
 
@@ -155,7 +158,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         assertFalse(config.trackingEnabled)
     }
 
@@ -172,7 +175,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         assertEquals("/custom/path/to/git", config.realGitHint)
     }
 
@@ -189,7 +192,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         assertEquals(60000L, config.sessionTrackingIntervalMs)
     }
 
@@ -208,7 +211,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(configFile)
-        
+
         assertTrue(config.trackingEnabled)
     }
 
@@ -218,7 +221,7 @@ class ConfigTest {
         Files.writeString(configFile, "{invalid json")
 
         val config = ConfigLoader.load(configFile)
-        
+
         // Should fall back to defaults
         assertNotNull(config)
         val external = config.external as Plugin.Cli
@@ -228,7 +231,7 @@ class ConfigTest {
     @Test
     fun `default config has expected values`() {
         val config = Config()
-        
+
         assertTrue(config.trackingEnabled)
         assertEquals(300_000L, config.sessionTrackingIntervalMs)
         assertEquals("^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$", config.branchPattern)
@@ -249,7 +252,7 @@ class ConfigTest {
         )
 
         val config = ConfigLoader.load(explicitConfig)
-        
+
         assertEquals(12345L, config.sessionTrackingIntervalMs)
     }
 
@@ -274,7 +277,7 @@ class ConfigTest {
     @Test
     fun `HTTP config uses default authentication when not specified`() {
         val httpConfig = Plugin.Http(baseUrl = "https://api.example.com")
-        
+
         assertEquals(Authentication.None, httpConfig.auth)
         assertEquals(10_000L, httpConfig.timeoutMs)
     }

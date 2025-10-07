@@ -1,7 +1,8 @@
 package io.amichne.kapture.core.model.session
 
 import kotlinx.datetime.Instant
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class SessionTimekeeperTest {
@@ -133,7 +134,7 @@ class SessionTimekeeperTest {
 
         // Original should be unchanged
         assertEquals(Instant.fromEpochMilliseconds(100), original.lastActivityTime)
-        
+
         // Each update should be independent
         assertEquals(Instant.fromEpochMilliseconds(200), updated1.lastActivityTime)
         assertEquals(Instant.fromEpochMilliseconds(300), updated2.lastActivityTime)
@@ -194,7 +195,7 @@ class SessionTimekeeperTest {
         )
 
         val end = Instant.fromEpochMilliseconds(5000)
-        
+
         assertEquals(session1.durationUntil(end), session2.durationUntil(end))
     }
 

@@ -1,15 +1,15 @@
 package io.amichne.kapture.core.adapter.internal.jira
 
 import io.amichne.kapture.core.adapter.Adapter
-import io.amichne.kapture.core.model.task.SubtaskCreationResult
-import io.amichne.kapture.core.model.task.TaskDetailsResult
-import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.config.Integration
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.core.util.JsonProvider
 import kotlinx.serialization.json.Json

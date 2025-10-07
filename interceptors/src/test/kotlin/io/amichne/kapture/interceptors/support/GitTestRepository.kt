@@ -28,7 +28,10 @@ class GitTestRepository private constructor(
         run("config", "user.email", "kapture@example.test")
     }
 
-    fun checkoutBranch(name: String, create: Boolean = false) {
+    fun checkoutBranch(
+        name: String,
+        create: Boolean = false
+    ) {
         if (create) {
             run("checkout", "-b", name)
         } else {
@@ -36,7 +39,10 @@ class GitTestRepository private constructor(
         }
     }
 
-    fun createFile(relative: String, content: String = "content") {
+    fun createFile(
+        relative: String,
+        content: String = "content"
+    ) {
         val path = root.resolve(relative)
         path.parent?.createDirectories()
         path.writeText(content)

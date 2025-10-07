@@ -3,11 +3,13 @@ package io.amichne.kapture.core.http.adapter
 import io.amichne.kapture.core.adapter.internal.http.HttpAdapter
 import io.amichne.kapture.core.model.config.Authentication
 import io.amichne.kapture.core.model.config.Plugin
-import io.amichne.kapture.core.model.task.TaskSearchResult
 import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.TaskSearchResult
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -28,7 +30,9 @@ class RestAdapterTest {
             Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.None),
             Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.Bearer("token")),
             Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.Basic("user", "pass")),
-            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.PersonalAccessToken("email", "token"))
+            Plugin.Http(
+                baseUrl = "https://api.example.com", auth = Authentication.PersonalAccessToken("email", "token")
+            )
         )
 
         integrations.forEach { integration ->

@@ -23,7 +23,10 @@ sealed class Authentication {
     /** Applies HTTP Basic authentication using the supplied credentials. */
     @Serializable
     @SerialName("basic")
-    data class Basic(val username: String, val password: String) : Authentication()
+    data class Basic(
+        val username: String,
+        val password: String
+    ) : Authentication()
 
     /**
      * Jira personal access token support. Authenticates with Basic authenticator using
@@ -32,5 +35,8 @@ sealed class Authentication {
      */
     @Serializable
     @SerialName("pat")
-    data class PersonalAccessToken(val email: String, val token: String) : Authentication()
+    data class PersonalAccessToken(
+        val email: String,
+        val token: String
+    ) : Authentication()
 }

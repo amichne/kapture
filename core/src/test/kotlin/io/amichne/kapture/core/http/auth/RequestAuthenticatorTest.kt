@@ -1,16 +1,19 @@
 package io.amichne.kapture.core.http.auth
 
+import io.amichne.kapture.core.authenticator.RequestAuthenticator
 import io.amichne.kapture.core.authenticator.internal.BasicAuthenticator
 import io.amichne.kapture.core.authenticator.internal.BearerAuthenticator
 import io.amichne.kapture.core.authenticator.internal.JiraPersonalAccessToken
 import io.amichne.kapture.core.authenticator.internal.NoOpAuthenticator
-import io.amichne.kapture.core.authenticator.RequestAuthenticator
 import io.amichne.kapture.core.model.config.Authentication
-import io.ktor.client.request.*
-import io.ktor.http.*
-import org.junit.jupiter.api.Assertions.*
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.http.HttpHeaders
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.util.*
+import java.util.Base64
 
 class RequestAuthenticatorTest {
 

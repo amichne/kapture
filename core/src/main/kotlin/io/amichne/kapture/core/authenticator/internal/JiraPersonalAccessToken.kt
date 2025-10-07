@@ -12,7 +12,7 @@ internal class JiraPersonalAccessToken(
     token: String
 ) : RequestAuthenticator {
     private val delegate = BasicAuthenticator(email, token)
-    
+
     override fun apply(builder: HttpRequestBuilder) {
         delegate.apply(builder)
     }

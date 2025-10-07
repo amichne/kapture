@@ -1,10 +1,10 @@
 package io.amichne.kapture.core.authenticator.internal
 
 import io.amichne.kapture.core.authenticator.RequestAuthenticator
+import io.amichne.kapture.core.util.JsonProvider
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
-import io.amichne.kapture.core.util.JsonProvider
 
 internal class BasicAuthenticator(
     private val username: String,

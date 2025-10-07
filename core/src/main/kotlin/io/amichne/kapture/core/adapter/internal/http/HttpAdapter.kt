@@ -1,14 +1,14 @@
 package io.amichne.kapture.core.adapter.internal.http
 
 import io.amichne.kapture.core.adapter.Adapter
-import io.amichne.kapture.core.model.task.SubtaskCreationResult
-import io.amichne.kapture.core.model.task.TaskDetailsResult
-import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.authenticator.RequestAuthenticator
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
 import io.amichne.kapture.core.model.task.TaskStatusResponse
+import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.core.util.JsonProvider
 import io.ktor.client.HttpClient
@@ -98,12 +98,18 @@ internal class HttpAdapter(
         }
     }
 
-    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult {
+    override fun createSubtask(
+        parentId: String,
+        title: String?
+    ): SubtaskCreationResult {
         Environment.debug { "REST adapter does not fully support subtask creation; use jira-cli adapter" }
         return SubtaskCreationResult.Failure("Not implemented for REST adapter")
     }
 
-    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult {
+    override fun transitionTask(
+        taskId: String,
+        targetStatus: String
+    ): TaskTransitionResult {
         Environment.debug { "REST adapter does not fully support task transitions; use jira-cli adapter" }
         return TaskTransitionResult.Failure("Not implemented for REST adapter")
     }

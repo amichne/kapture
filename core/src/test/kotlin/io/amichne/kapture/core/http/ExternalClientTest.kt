@@ -1,14 +1,14 @@
 package io.amichne.kapture.core.http
 
 import io.amichne.kapture.core.ExternalClient
+import io.amichne.kapture.core.adapter.Adapter
 import io.amichne.kapture.core.model.config.Authentication
 import io.amichne.kapture.core.model.config.Plugin
-import io.amichne.kapture.core.adapter.Adapter
-import io.amichne.kapture.core.model.task.TaskDetailsResult
-import io.amichne.kapture.core.model.task.SubtaskCreationResult
-import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -142,10 +142,16 @@ class ExternalClientTest {
             lastSessionSnapshot = snapshot
         }
 
-        override fun createSubtask(parentId: String, title: String?) =
+        override fun createSubtask(
+            parentId: String,
+            title: String?
+        ) =
             SubtaskCreationResult.Failure("Not implemented")
 
-        override fun transitionTask(taskId: String, targetStatus: String) =
+        override fun transitionTask(
+            taskId: String,
+            targetStatus: String
+        ) =
             TaskTransitionResult.Failure("Not implemented")
 
         override fun getTaskDetails(taskId: String) =

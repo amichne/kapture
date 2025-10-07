@@ -48,7 +48,6 @@ Workflow commands require the `jira-cli` integration type:
 }
 ```
 
-
 ## Quick Start
 
 ### Prerequisites

@@ -8,7 +8,9 @@ import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.TaskSearchResult
 import kotlinx.datetime.Instant
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -188,13 +190,15 @@ class ExternalClientIntegrationTest {
 
             // Verify basic operations work
             client.getTaskStatus("")
-            client.trackSession(SessionSnapshot(
-                branch = "main",
-                task = null,
-                startTime = Instant.fromEpochMilliseconds(0),
-                endTime = Instant.fromEpochMilliseconds(1000),
-                durationMs = 1000
-            ))
+            client.trackSession(
+                SessionSnapshot(
+                    branch = "main",
+                    task = null,
+                    startTime = Instant.fromEpochMilliseconds(0),
+                    endTime = Instant.fromEpochMilliseconds(1000),
+                    durationMs = 1000
+                )
+            )
             client.close()
         }
     }

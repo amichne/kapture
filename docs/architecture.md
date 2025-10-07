@@ -31,19 +31,21 @@ image).
 
 1. `MainKt.main` receives the raw arguments exactly as the user typed them (e.g. `git commit -m "msg"`).
 2. `Config.load()` resolves the config file using this precedence:
-  1. explicit path passed to `load`
-  2. `KAPTURE_CONFIG` environment variable
-  3. `${KAPTURE_ROOT}/config.json` (defaults to `~/.kapture/state/config.json`)
-     If no config exists, defaults are used and the state directory is created.
+1. explicit path passed to `load`
+2. `KAPTURE_CONFIG` environment variable
+3. `${KAPTURE_ROOT}/config.json` (defaults to `~/.kapture/state/config.json`)
+   If no config exists, defaults are used and the state directory is created.
 3. `RealGitResolver.resolve` enumerates candidates from `REAL_GIT`, the config hint, `$PATH`, and well-known fallbacks.
    It avoids returning the wrapper artefact itself to stop infinite recursion.
 4. `ExternalClient` is constructed from the `external` integration config. For REST backends it spins up a Ktor CIO
    client (10 second timeouts, JSON negotiation); for the Jira CLI backend it shells out to the `jira` binary and parses
    its JSON output.
 5. The CLI branches:
-  - If the first argument is `kapture`, the built-in subcommand handler runs (currently `status`/`help`).
-  - Certain read-only Git commands (`--version`, `help`, `rev-parse`, completion flags, etc.) are proxied immediately.
-  - Otherwise an `Invocation` object is created and passed to each interceptor.
+
+- If the first argument is `kapture`, the built-in subcommand handler runs (currently `status`/`help`).
+- Certain read-only Git commands (`--version`, `help`, `rev-parse`, completion flags, etc.) are proxied immediately.
+- Otherwise an `Invocation` object is created and passed to each interceptor.
+
 6. `GitInterceptor.before` runs in declaration order. Returning a non-null exit code stops further processing and causes
    the CLI to exit immediately (used for blocking push/commit/bad branch).
 7. If no interceptor blocks execution, `Exec.passthrough` spawns the real Git process with the preserved working

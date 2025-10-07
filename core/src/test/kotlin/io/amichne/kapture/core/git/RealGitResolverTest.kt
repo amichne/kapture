@@ -1,11 +1,14 @@
 package io.amichne.kapture.core.git
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermission
 
 class RealGitResolverTest {
 
@@ -16,7 +19,7 @@ class RealGitResolverTest {
     fun `resolve finds git in PATH`() {
         // This test requires git to be installed on the system
         val gitPath = RealGitResolver.resolve(null)
-        
+
         assertNotNull(gitPath)
         assertTrue(gitPath.isNotEmpty())
         assertTrue(Files.exists(Path.of(gitPath)))
@@ -25,7 +28,7 @@ class RealGitResolverTest {
     @Test
     fun `resolve prefers REAL_GIT environment variable`() {
         val originalEnv = System.getenv("REAL_GIT")
-        
+
         // We can't modify environment at runtime easily, but we can verify
         // the resolver doesn't crash when REAL_GIT is not set
         if (originalEnv == null) {
@@ -39,20 +42,20 @@ class RealGitResolverTest {
     fun `resolve uses configHint when provided and valid`() {
         // Find the real git first
         val realGit = RealGitResolver.resolve(null)
-        
+
         // Use it as a hint
         val resolved = RealGitResolver.resolve(realGit)
-        
+
         assertEquals(realGit, resolved)
     }
 
     @Test
     fun `resolve skips non-existent paths`() {
         val nonExistentPath = "/this/path/does/not/exist/git"
-        
+
         // Should still resolve to a real git, not use the bad hint
         val resolved = RealGitResolver.resolve(nonExistentPath)
-        
+
         assertNotNull(resolved)
         assertNotEquals(nonExistentPath, resolved)
     }
@@ -61,10 +64,10 @@ class RealGitResolverTest {
     fun `resolve skips directories`() {
         val directory = tempDir.resolve("git-dir")
         Files.createDirectories(directory)
-        
+
         // Should not resolve to a directory
         val resolved = RealGitResolver.resolve(directory.toString())
-        
+
         assertNotNull(resolved)
         assertNotEquals(directory.toString(), resolved)
     }
@@ -74,9 +77,9 @@ class RealGitResolverTest {
         val nonExecutable = tempDir.resolve("git-not-executable")
         Files.writeString(nonExecutable, "#!/bin/sh\necho 'fake git'")
         // Don't set executable permission
-        
+
         val resolved = RealGitResolver.resolve(nonExecutable.toString())
-        
+
         // Should find real git, not the non-executable file
         assertNotNull(resolved)
         assertNotEquals(nonExecutable.toString(), resolved)
@@ -100,7 +103,7 @@ class RealGitResolverTest {
     @Test
     fun `resolve handles blank configHint`() {
         val resolved = RealGitResolver.resolve("")
-        
+
         assertNotNull(resolved)
         assertTrue(Files.exists(Path.of(resolved)))
     }
@@ -108,7 +111,7 @@ class RealGitResolverTest {
     @Test
     fun `resolve handles whitespace-only configHint`() {
         val resolved = RealGitResolver.resolve("   ")
-        
+
         assertNotNull(resolved)
         assertTrue(Files.exists(Path.of(resolved)))
     }
@@ -116,12 +119,12 @@ class RealGitResolverTest {
     @Test
     fun `resolve normalizes paths`() {
         val realGit = RealGitResolver.resolve(null)
-        
+
         // Provide a non-normalized version with .. in it
         val parent = Path.of(realGit).parent
         if (parent != null) {
             val unnormalized = parent.resolve("subdir").resolve("..").resolve(Path.of(realGit).fileName).toString()
-            
+
             // Should still work after normalization
             assertDoesNotThrow {
                 RealGitResolver.resolve(unnormalized)
@@ -132,7 +135,7 @@ class RealGitResolverTest {
     @Test
     fun `resolve returns absolute path`() {
         val resolved = RealGitResolver.resolve(null)
-        
+
         assertTrue(Path.of(resolved).isAbsolute)
     }
 
@@ -143,9 +146,9 @@ class RealGitResolverTest {
             "/usr/local/bin/git",
             "/opt/homebrew/bin/git"
         )
-        
+
         val resolved = RealGitResolver.resolve(null)
-        
+
         // At least one common path should exist or git was found elsewhere
         assertNotNull(resolved)
         assertTrue(Files.exists(Path.of(resolved)))
@@ -155,7 +158,7 @@ class RealGitResolverTest {
     fun `multiple resolve calls return same result`() {
         val resolved1 = RealGitResolver.resolve(null)
         val resolved2 = RealGitResolver.resolve(null)
-        
+
         assertEquals(resolved1, resolved2)
     }
 
@@ -170,7 +173,7 @@ class RealGitResolverTest {
     fun `resolve returns executable file`() {
         val resolved = RealGitResolver.resolve(null)
         val path = Path.of(resolved)
-        
+
         assertTrue(Files.exists(path))
         assertTrue(Files.isRegularFile(path))
         assertTrue(Files.isExecutable(path))
@@ -189,7 +192,7 @@ class RealGitResolverTest {
     fun `resolve handles symlinks correctly`() {
         val realGit = RealGitResolver.resolve(null)
         val path = Path.of(realGit)
-        
+
         // Verify it resolved to a real file (following symlinks if any)
         assertTrue(Files.exists(path))
         assertTrue(Files.isExecutable(path))

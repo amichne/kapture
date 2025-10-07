@@ -1,6 +1,7 @@
 package io.amichne.kapture.core.util
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -116,9 +117,9 @@ class FileUtilsTest {
     fun `writeAtomically creates parent directory when parent is null initially`() {
         // Create a file at the root of tempDir (which already exists)
         val targetFile = tempDir.resolve("root-file.txt")
-        
+
         FileUtils.writeAtomically(targetFile, "content")
-        
+
         assertTrue(Files.exists(targetFile))
         assertEquals("content", Files.readString(targetFile))
     }
@@ -126,9 +127,9 @@ class FileUtilsTest {
     @Test
     fun `writeAtomically handles short filename for temp file prefix`() {
         val targetFile = tempDir.resolve("ab.txt")
-        
+
         FileUtils.writeAtomically(targetFile, "short name")
-        
+
         assertTrue(Files.exists(targetFile))
         assertEquals("short name", Files.readString(targetFile))
     }
@@ -136,9 +137,9 @@ class FileUtilsTest {
     @Test
     fun `writeAtomically handles very short filename`() {
         val targetFile = tempDir.resolve("a")
-        
+
         FileUtils.writeAtomically(targetFile, "single char name")
-        
+
         assertTrue(Files.exists(targetFile))
         assertEquals("single char name", Files.readString(targetFile))
     }
@@ -146,7 +147,7 @@ class FileUtilsTest {
     @Test
     fun `writeAtomically preserves file after multiple rapid writes`() {
         val targetFile = tempDir.resolve("rapid.txt")
-        
+
         // Simulate rapid successive writes
         repeat(10) { i ->
             FileUtils.writeAtomically(targetFile, "write-$i")

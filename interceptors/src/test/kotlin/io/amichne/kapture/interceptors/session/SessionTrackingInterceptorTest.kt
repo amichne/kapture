@@ -1,15 +1,15 @@
 package io.amichne.kapture.interceptors.session
 
-import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.ExternalClient
-import io.amichne.kapture.core.model.task.TaskSearchResult
 import io.amichne.kapture.core.adapter.Adapter
-import io.amichne.kapture.core.model.task.SubtaskCreationResult
-import io.amichne.kapture.core.model.task.TaskTransitionResult
-import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.session.SessionTimekeeper
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.interceptors.support.GitTestRepository
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
@@ -53,8 +53,17 @@ class SessionTrackingInterceptorTest {
             override fun trackSession(snapshot: SessionSnapshot) {
                 snapshots += snapshot
             }
-            override fun createSubtask(parentId: String, title: String?) = SubtaskCreationResult.Failure("Not implemented")
-            override fun transitionTask(taskId: String, targetStatus: String) = TaskTransitionResult.Failure("Not implemented")
+
+            override fun createSubtask(
+                parentId: String,
+                title: String?
+            ) = SubtaskCreationResult.Failure("Not implemented")
+
+            override fun transitionTask(
+                taskId: String,
+                targetStatus: String
+            ) = TaskTransitionResult.Failure("Not implemented")
+
             override fun getTaskDetails(taskId: String) = TaskDetailsResult.Failure("Not implemented")
             override fun close() {}
         })
@@ -95,19 +104,32 @@ class SessionTrackingInterceptorTest {
         val snapshots = mutableListOf<SessionSnapshot>()
         val client = ExternalClient.wrap(object : Adapter {
             override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
-            override fun trackSession(snapshot: SessionSnapshot) { snapshots += snapshot }
-            override fun createSubtask(parentId: String, title: String?) = SubtaskCreationResult.Failure("Not implemented")
-            override fun transitionTask(taskId: String, targetStatus: String) = TaskTransitionResult.Failure("Not implemented")
+            override fun trackSession(snapshot: SessionSnapshot) {
+                snapshots += snapshot
+            }
+
+            override fun createSubtask(
+                parentId: String,
+                title: String?
+            ) = SubtaskCreationResult.Failure("Not implemented")
+
+            override fun transitionTask(
+                taskId: String,
+                targetStatus: String
+            ) = TaskTransitionResult.Failure("Not implemented")
+
             override fun getTaskDetails(taskId: String) = TaskDetailsResult.Failure("Not implemented")
             override fun close() {}
         })
         val interceptor = SessionTrackingInterceptor(clock = clock, json = json)
 
-        val firstCommandInvocation = CommandInvocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
+        val firstCommandInvocation =
+            CommandInvocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
         interceptor.after(firstCommandInvocation, 0, config, client)
 
         repo.checkoutBranch("PROJ-10/fix", create = true)
-        val secondCommandInvocation = CommandInvocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
+        val secondCommandInvocation =
+            CommandInvocation(listOf("status"), repo.gitPath(), repo.root.toFile(), repo.environment())
         clock.advance(5.minutes)
         interceptor.after(secondCommandInvocation, 0, config, client)
 

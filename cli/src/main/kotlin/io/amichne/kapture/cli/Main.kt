@@ -1,11 +1,11 @@
 package io.amichne.kapture.cli
 
-import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.git.RealGitResolver
-import io.amichne.kapture.core.ExternalClient
-import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.command.CommandInvocation
+import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.util.ConfigLoader
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.interceptors.InterceptorRegistry
@@ -89,6 +89,7 @@ private fun runKaptureCommand(
                 val externalDescription = when (val ext = config.external) {
                     is Plugin.Http ->
                         "REST API (${ext.baseUrl})"
+
                     is Plugin.Cli ->
                         "jira-cli (${ext.executable})"
                 }

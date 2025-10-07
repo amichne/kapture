@@ -1,9 +1,6 @@
 package io.amichne.kapture.core.model.config
 
 import io.amichne.kapture.core.config.Integration
-import io.amichne.kapture.core.model.config.Plugin
-import io.amichne.kapture.core.model.config.Enforcement
-import io.amichne.kapture.core.model.config.StatusRules
 import kotlinx.serialization.Serializable
 
 @Serializable

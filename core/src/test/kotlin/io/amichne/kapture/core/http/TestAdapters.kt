@@ -1,11 +1,11 @@
 package io.amichne.kapture.core.http
 
 import io.amichne.kapture.core.adapter.Adapter
-import io.amichne.kapture.core.model.task.SubtaskCreationResult
-import io.amichne.kapture.core.model.task.TaskTransitionResult
-import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.SubtaskCreationResult
+import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskTransitionResult
 
 /**
  * Mock adapter for testing that tracks all invocations and allows
@@ -26,12 +26,18 @@ class MockAdapter(
         calls.add(AdapterCall.TrackSession(snapshot))
     }
 
-    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult {
+    override fun createSubtask(
+        parentId: String,
+        title: String?
+    ): SubtaskCreationResult {
         calls.add(AdapterCall.CreateSubtask(parentId, title))
         return SubtaskCreationResult.Success("${parentId}-1")
     }
 
-    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult {
+    override fun transitionTask(
+        taskId: String,
+        targetStatus: String
+    ): TaskTransitionResult {
         calls.add(AdapterCall.TransitionTask(taskId, targetStatus))
         return TaskTransitionResult.Success
     }
@@ -52,8 +58,16 @@ class MockAdapter(
     sealed class AdapterCall {
         data class GetTaskStatus(val taskId: String) : AdapterCall()
         data class TrackSession(val snapshot: SessionSnapshot) : AdapterCall()
-        data class CreateSubtask(val parentId: String, val title: String?) : AdapterCall()
-        data class TransitionTask(val taskId: String, val targetStatus: String) : AdapterCall()
+        data class CreateSubtask(
+            val parentId: String,
+            val title: String?
+        ) : AdapterCall()
+
+        data class TransitionTask(
+            val taskId: String,
+            val targetStatus: String
+        ) : AdapterCall()
+
         data class GetTaskDetails(val taskId: String) : AdapterCall()
         data object Close : AdapterCall()
     }
@@ -72,10 +86,16 @@ class FailingAdapter(
         // No-op for failing adapter
     }
 
-    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult =
+    override fun createSubtask(
+        parentId: String,
+        title: String?
+    ): SubtaskCreationResult =
         SubtaskCreationResult.Failure(errorMessage)
 
-    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult =
+    override fun transitionTask(
+        taskId: String,
+        targetStatus: String
+    ): TaskTransitionResult =
         TaskTransitionResult.Failure(errorMessage)
 
     override fun getTaskDetails(taskId: String): TaskDetailsResult =
@@ -92,7 +112,10 @@ class FailingAdapter(
 class StatefulAdapter : Adapter {
     private val taskStatuses = mutableMapOf<String, String>()
 
-    fun setTaskStatus(taskId: String, status: String) {
+    fun setTaskStatus(
+        taskId: String,
+        status: String
+    ) {
         taskStatuses[taskId] = status
     }
 
@@ -115,10 +138,16 @@ class StatefulAdapter : Adapter {
         // No-op for stateful adapter
     }
 
-    override fun createSubtask(parentId: String, title: String?): SubtaskCreationResult =
+    override fun createSubtask(
+        parentId: String,
+        title: String?
+    ): SubtaskCreationResult =
         SubtaskCreationResult.Success("${parentId}-1")
 
-    override fun transitionTask(taskId: String, targetStatus: String): TaskTransitionResult {
+    override fun transitionTask(
+        taskId: String,
+        targetStatus: String
+    ): TaskTransitionResult {
         taskStatuses[taskId] = targetStatus
         return TaskTransitionResult.Success
     }

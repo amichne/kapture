@@ -1,6 +1,10 @@
 package io.amichne.kapture.core.util
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -34,11 +38,11 @@ class EnvironmentTest {
         val env = Environment.passthrough()
 
         assertNotNull(env)
-        
+
         // Check that only GIT_ prefixed or whitelisted keys are present
         env.keys.forEach { key ->
             assertTrue(
-                key.startsWith("GIT_") || 
+                key.startsWith("GIT_") ||
                 key in setOf("PAGER", "LESS", "EDITOR", "VISUAL", "SSH_ASKPASS", "GPG_TTY"),
                 "Key $key should be filtered"
             )
@@ -50,11 +54,11 @@ class EnvironmentTest {
         // We can't easily set environment variables for testing,
         // but we can verify the filtering logic works
         val env = Environment.passthrough()
-        
+
         // All keys should be valid
         env.keys.forEach { key ->
             assertTrue(
-                key.startsWith("GIT_") || 
+                key.startsWith("GIT_") ||
                 key in setOf("PAGER", "LESS", "EDITOR", "VISUAL", "SSH_ASKPASS", "GPG_TTY")
             )
         }
@@ -63,7 +67,7 @@ class EnvironmentTest {
     @Test
     fun `passthrough includes PAGER if present in environment`() {
         val env = Environment.passthrough()
-        
+
         // PAGER might or might not be set, but if it is, it should be in passthrough
         val fullEnv = Environment.full()
         if (fullEnv.containsKey("PAGER")) {
@@ -75,7 +79,7 @@ class EnvironmentTest {
     @Test
     fun `passthrough does not include non-Git variables`() {
         val env = Environment.passthrough()
-        
+
         // These common variables should be filtered out
         val filteredVars = listOf("HOME", "USER", "SHELL", "LANG", "TERM")
         filteredVars.forEach { varName ->
@@ -101,7 +105,7 @@ class EnvironmentTest {
         val currentValue = System.getenv("KAPTURE_DEBUG")
         if (currentValue != "1") {
             var invoked = false
-            Environment.debug { 
+            Environment.debug {
                 invoked = true
                 "This should not be called"
             }
@@ -116,12 +120,12 @@ class EnvironmentTest {
             val originalErr = System.err
             val outputStream = ByteArrayOutputStream()
             val printStream = PrintStream(outputStream)
-            
+
             try {
                 System.setErr(printStream)
                 Environment.debug { "Test debug message" }
                 printStream.flush()
-                
+
                 val output = outputStream.toString()
                 assertTrue(output.contains("[kapture]"))
                 assertTrue(output.contains("Test debug message"))
@@ -134,7 +138,7 @@ class EnvironmentTest {
     @Test
     fun `passthrough returns empty map when no Git variables present`() {
         val env = Environment.passthrough()
-        
+
         // The result might be empty if no GIT_ vars or passthrough vars are set
         // This is valid behavior
         assertNotNull(env)
@@ -144,7 +148,7 @@ class EnvironmentTest {
     fun `passthrough is subset of full environment`() {
         val full = Environment.full()
         val passthrough = Environment.passthrough()
-        
+
         // Every key in passthrough should exist in full with same value
         passthrough.forEach { (key, value) ->
             assertTrue(full.containsKey(key), "Key $key in passthrough should be in full env")
@@ -155,7 +159,7 @@ class EnvironmentTest {
     @Test
     fun `full contains PATH or Path variable`() {
         val env = Environment.full()
-        
+
         // Most systems have PATH (Unix) or Path (Windows)
         assertTrue(env.containsKey("PATH") || env.containsKey("Path"))
     }
@@ -164,7 +168,7 @@ class EnvironmentTest {
     fun `passthrough includes EDITOR if present`() {
         val full = Environment.full()
         val passthrough = Environment.passthrough()
-        
+
         if (full.containsKey("EDITOR")) {
             assertTrue(passthrough.containsKey("EDITOR"))
             assertEquals(full["EDITOR"], passthrough["EDITOR"])
@@ -175,7 +179,7 @@ class EnvironmentTest {
     fun `passthrough includes VISUAL if present`() {
         val full = Environment.full()
         val passthrough = Environment.passthrough()
-        
+
         if (full.containsKey("VISUAL")) {
             assertTrue(passthrough.containsKey("VISUAL"))
             assertEquals(full["VISUAL"], passthrough["VISUAL"])
@@ -186,7 +190,7 @@ class EnvironmentTest {
     fun `passthrough includes SSH_ASKPASS if present`() {
         val full = Environment.full()
         val passthrough = Environment.passthrough()
-        
+
         if (full.containsKey("SSH_ASKPASS")) {
             assertTrue(passthrough.containsKey("SSH_ASKPASS"))
             assertEquals(full["SSH_ASKPASS"], passthrough["SSH_ASKPASS"])
@@ -197,7 +201,7 @@ class EnvironmentTest {
     fun `passthrough includes GPG_TTY if present`() {
         val full = Environment.full()
         val passthrough = Environment.passthrough()
-        
+
         if (full.containsKey("GPG_TTY")) {
             assertTrue(passthrough.containsKey("GPG_TTY"))
             assertEquals(full["GPG_TTY"], passthrough["GPG_TTY"])
@@ -208,7 +212,7 @@ class EnvironmentTest {
     fun `passthrough includes LESS if present`() {
         val full = Environment.full()
         val passthrough = Environment.passthrough()
-        
+
         if (full.containsKey("LESS")) {
             assertTrue(passthrough.containsKey("LESS"))
             assertEquals(full["LESS"], passthrough["LESS"])
@@ -219,7 +223,7 @@ class EnvironmentTest {
     fun `multiple calls to full return same values`() {
         val env1 = Environment.full()
         val env2 = Environment.full()
-        
+
         assertEquals(env1, env2)
     }
 
@@ -227,7 +231,7 @@ class EnvironmentTest {
     fun `multiple calls to passthrough return same values`() {
         val env1 = Environment.passthrough()
         val env2 = Environment.passthrough()
-        
+
         assertEquals(env1, env2)
     }
 }

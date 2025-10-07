@@ -1,8 +1,8 @@
 package io.amichne.kapture.core
 
 import io.amichne.kapture.core.adapter.Adapter
-import io.amichne.kapture.core.adapter.internal.jira.JiraCliAdapter
 import io.amichne.kapture.core.adapter.internal.http.HttpAdapter
+import io.amichne.kapture.core.adapter.internal.jira.JiraCliAdapter
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.TaskSearchResult
