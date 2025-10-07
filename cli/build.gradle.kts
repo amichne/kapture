@@ -1,6 +1,5 @@
 plugins {
     application
-    id("com.gradleup.shadow")
     id("org.graalvm.buildtools.native")
     kotlin("jvm")
     kotlin("plugin.serialization")
@@ -16,12 +15,6 @@ application {
     mainClass.set("io.amichne.kapture.cli.MainKt")
 }
 
-tasks.shadowJar {
-    archiveBaseName.set("kapture")
-    archiveClassifier.set("")
-    minimize()
-}
-
 graalvmNative {
     metadataRepository {
         enabled.set(true)
@@ -29,17 +22,23 @@ graalvmNative {
 
     binaries {
         named("main") {
-            imageName.set("kapture")
-            mainClass.set("io.amichne.kapture.cli.MainKt")
             useFatJar.set(true)
             resources.autodetect()
-            buildArgs.add("--initialize-at-build-time")
-            buildArgs.add("--enable-http")
-            buildArgs.add("--enable-url-protocols=https")
-            buildArgs.add("--report-unsupported-elements-at-runtime")
-            buildArgs.add("--no-fallback")
-            buildArgs.add("--no-server")
-
+            imageName.set("kapture")
+            mainClass.set("io.amichne.kapture.cli.MainKt")
+            buildArgs.addAll(
+                listOf(
+                    "--initialize-at-build-time",
+                    "--enable-http",
+                    "--enable-url-protocols=https",
+                    "--report-unsupported-elements-at-runtime",
+                    "--no-fallback",
+                    "--no-server",
+                    "--strict-image-heap",
+                    "-R:MaxHeapSize=512m",
+                    "-march=native",
+                )
+            )
         }
     }
 }
