@@ -11,6 +11,35 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-kapture-integration}"
 COMPOSE_CMD=(docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE")
+KEEP_CONTAINERS=false
+
+usage() {
+  cat <<'EOF'
+Usage: integration-test.sh [options]
+
+Options:
+  -k, --keep-containers   Leave docker-compose services running after tests finish.
+  -h, --help              Show this help message.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -k|--keep-containers|--keepalive)
+      KEEP_CONTAINERS=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -58,7 +87,11 @@ cleanup() {
   if [[ -n "$CONFIG_BACKUP" && -f "$CONFIG_BACKUP" ]]; then
     rm -f "$CONFIG_BACKUP"
   fi
-  "${COMPOSE_CMD[@]}" down --volumes --remove-orphans >/dev/null 2>&1
+  if [[ "$KEEP_CONTAINERS" == true ]]; then
+    echo "Keeping docker-compose services running (requested via --keep-containers)."
+  else
+    "${COMPOSE_CMD[@]}" down --volumes --remove-orphans >/dev/null 2>&1
+  fi
   set -e
   exit "$exit_code"
 }
@@ -265,24 +298,18 @@ else
 fi
 
 header "Test 9: Jira wrapper commands"
-if "$BINARY" gira help >/dev/null 2>&1; then
-  echo "✓ gira help works"
+if "$BINARY" kapture help >/dev/null 2>&1; then
+  echo "✓ kapture help works"
 else
-  echo "✗ gira help failed" >&2
+  echo "✗ kapture help failed" >&2
   exit 1
 fi
 
-if "$BINARY" gira doctor >/dev/null 2>&1; then
-  echo "✓ gira doctor works"
-else
-  echo "✗ gira doctor failed" >&2
-  exit 1
-fi
 
-if "$BINARY" gira status >/dev/null 2>&1; then
-  echo "✓ gira status works"
+if "$BINARY" kapture status >/dev/null 2>&1; then
+  echo "✓ kapture status works"
 else
-  echo "⚠ gira status failed (expected if API credentials missing)"
+  echo "⚠ kapture status failed (expected if API credentials missing)"
 fi
 
 header "Test 10: TTY inheritance"
