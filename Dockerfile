@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libcurl4-openssl-dev \
-#    openjdk-17-jdk \
+    openjdk-21-jdk \
     && rm -rf /var/lib/apt/lists/*
 
 

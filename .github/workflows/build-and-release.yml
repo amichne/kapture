@@ -40,7 +40,15 @@ jobs:
   package:
     name: Build Artifacts
     needs: test
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            suffix: linux-x64
+          - os: macos-13
+            suffix: macos-x64
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -57,17 +65,28 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build artifacts
+        env:
+          ARTIFACT_NAME: kapture-${{ matrix.suffix }}
         run: |
           ./gradlew :cli:nativeCompile --no-daemon
           mkdir -p dist
-          cp cli/build/native/nativeCompile/kapture dist/kapture-linux-x64
-          chmod +x dist/kapture-linux-x64
-          (cd dist && sha256sum kapture-linux-x64 > kapture-linux-x64.sha256)
+          cp cli/build/native/nativeCompile/kapture "dist/${ARTIFACT_NAME}"
+          chmod +x "dist/${ARTIFACT_NAME}"
+          python - <<'PY'
+import hashlib
+import pathlib
+import os
+
+artifact = pathlib.Path('dist') / os.environ['ARTIFACT_NAME']
+checksum = hashlib.sha256(artifact.read_bytes()).hexdigest()
+target = artifact.parent / f"{artifact.name}.sha256"
+target.write_text(f"{checksum}  {artifact.name}\n")
+PY
 
       - name: Upload distribution artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kapture-distribution
+          name: kapture-${{ matrix.suffix }}
           path: dist
 
   release:
@@ -80,14 +99,17 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: kapture-distribution
-          path: dist
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p dist
+          find artifacts -maxdepth 2 -type f -print -exec cp {} dist/ \;
+          ls -al dist
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/kapture-linux-x64
-            dist/kapture-linux-x64.sha256
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

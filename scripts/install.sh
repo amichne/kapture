@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Kapture installation helper. Downloads the published Shadow JAR from GitHub releases,
+# Kapture installation helper. Downloads the published native binary from GitHub releases,
 # verifies its checksum when available, and installs a launcher script alongside it.
 
 REPO="amichne/kapture"
@@ -16,13 +16,13 @@ Usage: install.sh [options]
 
 Options:
   --version <tag>     Install the specified release tag (e.g. v1.2.3). Defaults to the latest release.
-  --install-dir <dir> Directory for the JAR (default: ~/.local/share/kapture).
+  --install-dir <dir> Directory for the binary (default: ~/.local/kapture).
   --bin-dir <dir>     Directory for the launcher script (default: ~/.local/bin).
   --repo <owner/name> Override the GitHub repository (default: amichne/kapture).
   --force             Overwrite existing files without prompting.
   -h, --help          Show this help message.
 
-The installer fetches release assets named kapture.jar and kapture.jar.sha256. Ensure curl is available.
+The installer fetches release assets named kapture and kapture.sha256. Ensure curl is available.
 EOF
 }
 
@@ -93,20 +93,20 @@ mkdir -p "$BIN_DIR"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-JAR_URL="https://github.com/${REPO}/releases/latest/download/kapture.jar"
-SUM_URL="https://github.com/${REPO}/releases/latest/download/kapture.jar.sha256"
+BINARY_URL="https://github.com/${REPO}/releases/latest/download/kapture"
+SUM_URL="https://github.com/${REPO}/releases/latest/download/kapture.sha256"
 
 if [[ -n "$VERSION" ]]; then
-  JAR_URL="https://github.com/${REPO}/releases/download/${VERSION}/kapture.jar"
-  SUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/kapture.jar.sha256"
+  BINARY_URL="https://github.com/${REPO}/releases/download/${VERSION}/kapture"
+  SUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/kapture.sha256"
 fi
 
-JAR_PATH="$TMP_DIR/kapture.jar"
-SUM_PATH="$TMP_DIR/kapture.jar.sha256"
+BINARY_PATH="$TMP_DIR/kapture"
+SUM_PATH="$TMP_DIR/kapture.sha256"
 
-echo "[kapture] Downloading kapture.jar from $JAR_URL"
-if ! curl -fsSL "$JAR_URL" -o "$JAR_PATH"; then
-  fail "Unable to download kapture.jar from $JAR_URL"
+echo "[kapture] Downloading kapture binary from $BINARY_URL"
+if ! curl -fsSL "$BINARY_URL" -o "$BINARY_PATH"; then
+  fail "Unable to download kapture binary from $BINARY_URL"
 fi
 
 VERIFY=false
@@ -119,9 +119,9 @@ if [[ "$VERIFY" == true ]]; then
   echo "[kapture] Verifying checksum"
   EXPECTED=$(cut -d' ' -f1 "$SUM_PATH")
   if command -v sha256sum >/dev/null 2>&1; then
-    ACTUAL=$(sha256sum "$JAR_PATH" | cut -d' ' -f1)
+    ACTUAL=$(sha256sum "$BINARY_PATH" | cut -d' ' -f1)
   elif command -v shasum >/dev/null 2>&1; then
-    ACTUAL=$(shasum -a 256 "$JAR_PATH" | cut -d' ' -f1)
+    ACTUAL=$(shasum -a 256 "$BINARY_PATH" | cut -d' ' -f1)
   else
     echo "[kapture] sha256sum/shasum not available; skipping verification"
     ACTUAL="$EXPECTED"
@@ -131,14 +131,15 @@ else
   echo "[kapture] Checksum not available; skipping verification"
 fi
 
-INSTALL_JAR="$INSTALL_DIR/kapture.jar"
-if [[ -e "$INSTALL_JAR" && "$FORCE" != true ]]; then
-  fail "${INSTALL_JAR} already exists. Re-run with --force to override."
+INSTALL_BINARY="$INSTALL_DIR/kapture"
+if [[ -e "$INSTALL_BINARY" && "$FORCE" != true ]]; then
+  fail "${INSTALL_BINARY} already exists. Re-run with --force to override."
 fi
 
-cp "$JAR_PATH" "$INSTALL_JAR"
+cp "$BINARY_PATH" "$INSTALL_BINARY"
+chmod +x "$INSTALL_BINARY"
 
-echo "[kapture] Installed JAR to $INSTALL_JAR"
+echo "[kapture] Installed binary to $INSTALL_BINARY"
 
 LAUNCHER_PATH="$BIN_DIR/kapture"
 if [[ -e "$LAUNCHER_PATH" && "$FORCE" != true ]]; then
@@ -151,7 +152,7 @@ set -euo pipefail
 if [[ -z "\${REAL_GIT:-}" ]]; then
   export REAL_GIT="\$(command -v git)"
 fi
-exec java -jar "$INSTALL_JAR" "\$@"
+exec "$INSTALL_BINARY" "\$@"
 EOF
 
 chmod +x "$LAUNCHER_PATH"

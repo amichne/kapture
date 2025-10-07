@@ -1,163 +1,132 @@
-## Configuration
+# Configuration
 
-### Branch Pattern
+Kapture reads a single JSON document to discover how to enforce branch policy, talk to Jira, and locate the real Git
+binary. This guide highlights the fields that matter most and shows how to adapt them for your workflow.
 
-The `branchPattern` in your Kapture config controls how branch names are validated and parsed:
+## Minimal template
 
-```json
+```jsonc
 {
-  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$"
-}
-```
-
-This pattern expects branches in the format: `TASK-123/description`
-
-### Status Rules
-
-Configure which Jira statuses are allowed for each workflow operation by customizing the status rules in your config:
-
-```json
-{
+  "externalBaseUrl": "https://jira.example.com",
+  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+  "enforcement": {
+    "branchPolicy": "WARN",
+    "statusCheck": "OFF"
+  },
   "statusRules": {
-    "allowCommitWhen": [
-      "IN_PROGRESS",
-      "READY"
-    ],
-    "allowPushWhen": [
-      "READY",
-      "IN_REVIEW"
-    ]
-  }
+    "allowCommitWhen": ["IN_PROGRESS", "READY"],
+    "allowPushWhen": ["READY", "IN_REVIEW"]
+  },
+  "external": {
+    "type": "jiraCli",
+    "environment": {
+      "JIRA_USER_EMAIL": "dev@example.com",
+      "JIRA_API_TOKEN": "<token>"
+    }
+  },
+  "trackingEnabled": false
 }
 ```
 
-### Jira CLI Integration
+> Place this file at `~/.kapture/state/config.json` or point `KAPTURE_CONFIG` at an alternative path.
 
-Workflow commands require the `jira-cli` integration type:
+## Key sections
 
-```json
+<details>
+<summary>Branch pattern & naming</summary>
+
+- `branchPattern` must include a named capture group `task`; Kapture extracts that group to resolve the Jira ticket ID.
+- Use anchors (`^`, `$`) to keep matching fast. Need multiple conventions? Compose them with non-capturing groups:
+  `^(?<task>(ENG|OPS)-\d+)\/(feature|fix)\/.*$`.
+- When introducing a new pattern, run `git kapture status` to confirm the compiled regex loads without errors.
+
+</details>
+
+<details>
+<summary>Enforcement modes</summary>
+
+| Mode  | Behaviour                                           |
+|-------|------------------------------------------------------|
+| `OFF` | Skip the interceptor entirely.                       |
+| `WARN`| Print diagnostics but allow the Git command to run.  |
+| `BLOCK` | Abort the Git command immediately with a non-zero exit code. |
+
+Configure branch policy and status checks independently via `enforcement.branchPolicy` and `enforcement.statusCheck`.
+
+</details>
+
+<details>
+<summary>Status gates</summary>
+
+- `statusRules.allowCommitWhen` and `statusRules.allowPushWhen` accept upper-case Jira status values.
+- Provide the canonical names exactly as they appear in Jira; transitions are case-sensitive.
+- Leave a list empty to block the action outright, or omit `statusRules` entirely to fall back to built-in defaults.
+
+</details>
+
+<details>
+<summary>External integrations</summary>
+
+Kapture normalises integrations through the `external` block.
+
+```jsonc
 {
   "external": {
     "type": "jiraCli",
     "executable": "jira",
     "environment": {
-      "JIRA_API_TOKEN": "<your-token>",
-      "JIRA_EMAIL": "you@example.com"
+      "JIRA_USER_EMAIL": "dev@example.com",
+      "JIRA_API_TOKEN": "<token>",
+      "JIRA_SERVER": "https://jira.example.com"
     }
   }
 }
 ```
 
-## Quick Start
+- `jiraCli` shells out to the official [`jira-cli`](https://github.com/ankitpokhrel/jira-cli) binary and expects
+  credentials via environment variables (keep tokens in a secrets manager, not in source control).
+- The experimental `rest` adapter targets Jira Cloud/Data Center REST APIs. Supply a `baseUrl` and an `auth` block
+  describing either PAT or basic auth. See the source for current capabilities before adopting.
 
-### Prerequisites
+</details>
 
-- JDK 21 for development builds (Temurin, GraalVM, Corretto…)
-- Gradle wrapper ships with the repository (`./gradlew`)
-- Optional: GraalVM 21 with the `native-image` component if you want the native binary
+<details>
+<summary>Telemetry controls</summary>
 
-### Clone & Build
+- `trackingEnabled = true` emits session snapshots through `ExternalClient.trackSession`.
+- `sessionTrackingIntervalMs` throttles how often a new snapshot is emitted (default: 30s).
+- When disabled, interceptors skip snapshot generation entirely.
 
-```bash
-./gradlew shadowJar
+</details>
+
+## Environment variables
+
+| Variable          | Purpose                                         |
+|-------------------|-------------------------------------------------|
+| `KAPTURE_CONFIG`  | Absolute path to the config file.               |
+| `KAPTURE_DEBUG`   | When truthy, prints verbose diagnostics to stderr. |
+| `REAL_GIT`        | Explicit path to the real Git binary (overrides discovery). |
+| `JIRA_USER_EMAIL` | Default Jira username/email when using `jiraCli`. |
+| `JIRA_API_TOKEN`  | Authentication token for Jira integrations.     |
+
+Values in the environment always win over file defaults.
+
+## File locations
+
+```text
+~/.kapture/
+├── state/
+│   └── config.json    # default config path
+└── logs/              # optional debug output when enabled
 ```
 
-The self-contained artefact is written to `cli/build/libs/kapture.jar`.
+Share configs across teams by checking them into your repo and pointing `KAPTURE_CONFIG` at the committed file in your
+shell profile or CI job definitions.
 
-Run the wrapper with:
+## Change management tips
 
-```bash
-java -jar cli/build/libs/kapture.jar status
-```
-
-(Use `--args="..."` when executing via `./gradlew run`.)
-
-### Install as a Git shim (JVM build)
-
-1. Find the path to your real Git binary: `which git`.
-2. Copy the fat JAR somewhere permanent (e.g. `/usr/local/lib/kapture/kapture.jar`).
-3. Create a lightweight launcher script earlier on your `PATH`, **without** overwriting the system Git:
-
-```bash
-#!/usr/bin/env bash
-export REAL_GIT="/usr/bin/git"      # replace with the path from step 1
-command java -jar /usr/local/lib/kapture/kapture.jar "$@"
-```
-
-Save it as `~/bin/git`, mark executable (`chmod +x ~/bin/git`), and ensure `~/bin` precedes the system Git directory
-in `PATH`.
-
-4. Run your normal Git commands (`git status`, `git push`, …). Kapture forwards to the real Git binary after running
-   its interceptors.
-
-### Build and Install the Native Binary
-
-1. Install GraalVM 21 and enable the native-image tool:
-
-```bash
-gu install native-image
-```
-
-2. From the project root build the native image:
-
-```bash
-./gradlew :cli:nativeCompile
-```
-
-The binary lands at `cli/build/native/nativeCompile/kapture` (or `kapture.exe` on Windows).
-
-3. Drop the binary onto your `PATH` (e.g. `/usr/local/bin/kapture`) and reuse the shim listed above, swapping the
-   `java -jar …` commandInvocation for the native binary path.
-
-## Usage
-
-- Everyday Git commands work unchanged (`git status`, `git commit -m`, `git push`). Kapture inspects the arguments to
-  decide which interceptors to execute, then delegates to the resolved Git binary.
-- Call the built-in helper at any time: `git kapture status` prints the resolved Git path and key configuration flags.
-- `KAPTURE_DEBUG=1` increases logging (emitted to stderr) and preserves interceptor diagnostics.
-- To supply configuration, create `~/.kapture/state/config.json` or point `KAPTURE_CONFIG` to a JSON file – see
-  [`docs/architecture.md`](docs/architecture.md) for the schema. External integrations are polymorphic:
-
-- REST API with bearer or Jira PAT auth
-
-```json
-{
-  "external": {
-    "type": "rest",
-    "baseUrl": "https://your-jira.example.com/rest/api/3",
-    "auth": {
-      "type": "pat",
-      "email": "you@example.com",
-      "token": "<pat>"
-    }
-  }
-}
-```
-
-- Jira CLI wrapper with environment-provided credentials
-
-```json
-{
-  "external": {
-    "type": "jiraCli",
-    "executable": "jira",
-    "environment": {
-      "JIRA_API_TOKEN": "<pat>",
-      "JIRA_EMAIL": "you@example.com"
-    }
-  }
-}
-```
-
-## Troubleshooting
-
-- Set `REAL_GIT` when the automatic resolver cannot find the real binary (WSL, custom installations, CI).
-- Use `--version`, `--help`, completion flags, and `git config` unaffected; the wrapper fast-paths these commands.
-- Network calls to your task system honour `trackingEnabled = false`; no session data is written in that mode.
-
-## Documentation Map
-
-- [`docs/architecture.md`](docs/architecture.md) – module breakdown, interceptor flow, HTTP integration
-- [`docs/contributing.md`](docs/contributing.md) – developing new features, extending interceptors, testing standards
-
-For repository conventions (style, testing, security), see `AGENTS.md`.
+- Store custom regexes and status rules in version control so they evolve with your workflow.
+- Validate updates in CI by running [`scripts/integration-test.sh`](../scripts/integration-test.sh); it exercises branch
+  policy, status gates, and jira-cli interactions end-to-end.
+- Pair config releases with documentation updates in [`docs/workflow-automation.md`](workflow-automation.md) so your
+  team knows how behaviour changed.

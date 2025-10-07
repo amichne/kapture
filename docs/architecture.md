@@ -1,112 +1,137 @@
 # Architecture
 
-This document explains how Kapture wires Git interception, configuration, HTTP lookups, and build tooling together.
-Use it as a reference when reasoning about behaviour or planning new features.
+Kapture is split into composable modules so policy checks, external integrations, and build targets can evolve
+independently. This guide orients you around the moving parts and shows how a single Git command flows through the
+system.
 
-## Module Overview
+## TL;DR
 
+- `core` owns shared primitives: configuration loading, process execution, logging, and the external client facade.
+- `interceptors` contribute policy hooks that run before/after Git executes.
+- `cli` wires everything together, resolves the real Git binary, and is the only module that produces runnable artefacts.
+
+## System map
+
+```mermaid
+flowchart TD
+    subgraph CLI
+        Entry[Entry point\nMainKt]
+        Registry[InterceptorRegistry]
+    end
+
+    subgraph Core
+        Config[Config loader]
+        Exec[CommandExecutor]
+        External[ExternalClient]
+    end
+
+    subgraph Interceptors
+        Branch[BranchPolicy]
+        Status[StatusGate]
+        Session[SessionTracking]
+    end
+
+    Entry --> Config
+    Entry --> Registry
+    Registry --> Branch
+    Registry --> Status
+    Registry --> Session
+    Branch --> Exec
+    Status --> Exec
+    Session --> Exec
+    Exec -->|git| RealGit[(Real git)]
+    Status --> External
+    Session --> External
+    External --> Jira[(Jira CLI / REST)]
 ```
-root
-├── core
-│   ├── config            // configuration loading & models
-│   ├── exec              // process launching helpers (Exec.passthrough)
-│   ├── git               // real Git discovery (RealGitResolver)
-│   ├── http              // ExternalClient HTTP wrapper
-│   ├── model             // Invocation + shared DTOs
-│   └── util              // Environment helpers, logging
-├── interceptors
-│   ├── GitInterceptor    // pre/post hook contract
-│   ├── BranchPolicyInterceptor
-│   ├── StatusGateInterceptor
-│   └── session           // SessionTrackingInterceptor + persistence
-└── cli
-    └── Main.kt           // entrypoint, command routing, interceptor loop
+
+Each interceptor depends only on `core` types and is registered declaratively inside `Registry`. The CLI orchestrates
+order; the core module supplies the runtime services they rely on.
+
+## Module responsibilities
+
+<details>
+<summary><code>core</code></summary>
+
+- Loads configuration (`Config.load`) with precedence: explicit path → `KAPTURE_CONFIG` → default state directory.
+- Resolves the real Git binary via `RealGitResolver`, filtering out the wrapper itself.
+- Provides `CommandExecutor` helpers for passthrough and captured execution.
+- Hosts the `ExternalClient` abstraction that normalises task status queries and telemetry submission across adapters.
+
+</details>
+
+<details>
+<summary><code>interceptors</code></summary>
+
+- Define the `GitInterceptor` contract (`before`/`after` hooks).
+- Ship built-in implementations:
+  - `BranchPolicyInterceptor` – validates branch names against the configured regex.
+  - `StatusGateInterceptor` – checks ticket state before critical commands.
+  - `SessionTrackingInterceptor` – emits activity snapshots when enabled.
+- Register interceptors in processing order via `InterceptorRegistry.interceptors`.
+
+</details>
+
+<details>
+<summary><code>cli</code></summary>
+
+- Parses the incoming Git invocation and decides whether to call a built-in subcommand (`git kapture …`) or forward to
+  the interceptor loop.
+- Applies fast paths for read-only commands (e.g. `--version`, completions) to keep Git UX snappy.
+- Exposes build artefacts: Kotlin/JVM application, GraalVM native image, and Docker entrypoints.
+
+</details>
+
+## Invocation lifecycle
+
+1. `MainKt.main` receives the raw Git arguments.
+2. `Config.load` resolves settings and materialises the state directory if needed.
+3. `RealGitResolver` searches `REAL_GIT`, config hints, and `PATH`, stopping once it finds a binary that is not the
+   wrapper itself.
+4. The CLI decides which path to take:
+   - built-in commands (`git kapture status`, `--list-cmds`) run immediately;
+   - completion helpers and other read-only Git commands bypass interceptors;
+   - everything else becomes an `Invocation` that flows through the interceptor pipeline.
+5. Each interceptor’s `before` hook runs in order and may short-circuit by returning a non-null exit code.
+6. If execution proceeds, `CommandExecutor.passthrough` spawns the real Git process with untouched environment and
+   working directory.
+7. After Git exits, `after` hooks run in the same order (session tracking, post-run messaging, …).
+8. The CLI returns Git’s exit code to the caller.
+
+## External integrations
+
+`ExternalClient` exposes two composable operations to interceptors:
+
+- `getTaskStatus(taskId)` – fetches ticket state from Jira (via `jira-cli` or REST).
+- `trackSession(snapshot)` – forwards telemetry events when tracking is enabled.
+
+Adapters handle retries, logging, and command execution. When integrations fail, interceptors degrade gracefully and
+allow Git to continue, logging diagnostics behind `KAPTURE_DEBUG`.
+
+## Native image build pipeline
+
+The CLI module uses `org.graalvm.buildtools.native` and enables optimisation flags tuned for CI and local runs:
+
+```kotlin
+buildArgs.addAll(
+    "--pgo", "--strict-image-heap",
+    "-R:MaxHeapSize=512m", "-march=native", "-Ob"
+)
 ```
 
-Each interceptor lives in `interceptors`, depends on the shared primitives in `core`, and is discovered via
-`InterceptorRegistry`. The CLI module is the only one that produces runnable artefacts (Shadow JAR and GraalVM native
-image).
+Relevant Gradle tasks:
 
-## Execution Flow
+- `:cli:nativeCompile` – build the optimised native binary.
+- `:cli:nativeRun` – execute the binary directly from the build output.
+- `:cli:nativeTest` – run JVM tests against the native runtime (when supplied).
 
-1. `MainKt.main` receives the raw arguments exactly as the user typed them (e.g. `git commit -m "msg"`).
-2. `Config.load()` resolves the config file using this precedence:
-1. explicit path passed to `load`
-2. `KAPTURE_CONFIG` environment variable
-3. `${KAPTURE_ROOT}/config.json` (defaults to `~/.kapture/state/config.json`)
-   If no config exists, defaults are used and the state directory is created.
-3. `RealGitResolver.resolve` enumerates candidates from `REAL_GIT`, the config hint, `$PATH`, and well-known fallbacks.
-   It avoids returning the wrapper artefact itself to stop infinite recursion.
-4. `ExternalClient` is constructed from the `external` integration config. For REST backends it spins up a Ktor CIO
-   client (10 second timeouts, JSON negotiation); for the Jira CLI backend it shells out to the `jira` binary and parses
-   its JSON output.
-5. The CLI branches:
+## Extending the pipeline
 
-- If the first argument is `kapture`, the built-in subcommand handler runs (currently `status`/`help`).
-- Certain read-only Git commands (`--version`, `help`, `rev-parse`, completion flags, etc.) are proxied immediately.
-- Otherwise an `Invocation` object is created and passed to each interceptor.
+1. Implement `GitInterceptor`, returning a non-null exit code from `before` when you need to block execution.
+2. Register your interceptor inside `InterceptorRegistry.interceptors`, paying attention to ordering.
+3. Document any new configuration keys in [`docs/configuration.md`](configuration.md) and add tests under the relevant
+   module.
+4. Keep shared utilities in `core` so other interceptors can reuse them without creating new dependencies.
 
-6. `GitInterceptor.before` runs in declaration order. Returning a non-null exit code stops further processing and causes
-   the CLI to exit immediately (used for blocking push/commit/bad branch).
-7. If no interceptor blocks execution, `Exec.passthrough` spawns the real Git process with the preserved working
-   directory, environment, and arguments.
-8. After Git exits, `GitInterceptor.after` hooks run in the same order (e.g. to emit session tracking events).
-9. The CLI terminates with Git’s exit code.
-
-## External Integrations
-
-`ExternalClient` exposes two operations regardless of backend:
-
-- `getTaskStatus(taskId)` – queries the configured integration (REST endpoint or `jira-cli task view`) and returns
-  a status string for `StatusGateInterceptor`.
-- `trackSession(snapshot)` – forwards telemetry when supported. REST integrations POST to `/sessions/track`, while the
-  Jira CLI backend currently no-ops and logs when debug mode is enabled.
-
-All implementations catch and log transient failures through `Environment.debug`, ensuring Git invocations keep running
-even when dependencies are unavailable.
-
-## Configuration Surface
-
-Key settings from `Config`:
-
-- `branchPattern` – regex with a named capture `task` that extracts the task identifier from branch names.
-- `external` – integration descriptor (`rest` with base URL/auth or `jiraCli` with executable/env overrides).
-- `enforcement.branchPolicy` / `.statusCheck` – `WARN`, `BLOCK`, or `OFF` mode per interceptor.
-- `statusRules` – allowed task statuses for commit/push operations.
-- `trackingEnabled` – disables session tracking when `false`.
-- `sessionTrackingIntervalMs` – minimum interval between session snapshots.
-- `realGitHint` – preferred path for the actual Git binary.
-- `taskSystem` – string flag for client-side specialisation (currently informational).
-
-The defaults are serialised with `encodeDefaults = true`, meaning a generated config file contains every key to simplify
-bootstrap.
-
-## Native Image Build
-
-The CLI module applies `org.graalvm.buildtools.native` and configures the `main` binary to:
-
-- reuse the shadow fat JAR (`useFatJar = true`)
-- automatically detect resource files on the classpath
-- pass critical flags (`--install-exit-handlers`, `--report-unsupported-elements-at-runtime`,
-  `--enable-url-protocols=https`) to satisfy Ktor/CIO requirements
-
-Gradle exposes helpful tasks:
-
-- `:cli:nativeCompile` – build the release native binary
-- `:cli:nativeRun` – execute the native image in place
-- `:cli:nativeTest` – run tests against the native runtime (if/when added)
-
-When adding libraries that rely on reflection or dynamic proxies, capture metadata automatically by keeping the
-metadata repository enabled (default) and, if necessary, check generated configs under `build/native/metadata`.
-
-## Extending the Pipeline
-
-To add a new interceptor:
-
-1. Implement `GitInterceptor`. Use `before` to gate execution and `after` for post-processing.
-2. Register the interceptor inside `InterceptorRegistry.interceptors`, respecting ordering constraints.
-3. Add unit tests under `interceptors/src/test/kotlin` and integration tests if the interceptor interacts with Git or
-   HTTP.
-4. Document new configuration keys (update `Config` and docs as necessary).
-
-Shared concerns (config loading, HTTP, logging) should live in `core` so they can be reused across interceptors.
+Use the [`scripts/integration-test.sh`](../scripts/integration-test.sh) suite to validate behaviour across Docker and
+native executions after introducing new hooks.
