@@ -50,7 +50,9 @@ jobs:
           - os: ubuntu-22.04
             suffix: linux-x64
           - os: macos-13
-            suffix: macos-x64
+            suffix: macos-x86
+          - os: macos-latest
+            suffix: macos-x64-arm
     runs-on: ${{ matrix.os }}
 
     steps:
