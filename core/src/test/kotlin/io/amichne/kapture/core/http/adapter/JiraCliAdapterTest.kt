@@ -59,7 +59,7 @@ class JiraCliAdapterTest {
 
         val result = adapter.getTaskStatus("TEST-123")
 
-        assertEquals(TaskSearchResult.Found("In Progress"), result)
+        result.assertFoundRaw("In Progress")
     }
 
     @Test
@@ -435,9 +435,9 @@ class JiraCliAdapterTest {
         val result2 = adapter.getTaskStatus("TEST-2")
         val result3 = adapter.getTaskStatus("TEST-3")
 
-        assertEquals(TaskSearchResult.Found("To Do"), result1)
-        assertEquals(TaskSearchResult.Found("In Progress"), result2)
-        assertEquals(TaskSearchResult.Found("Done"), result3)
+        result1.assertFoundRaw("To Do")
+        result2.assertFoundRaw("In Progress")
+        result3.assertFoundRaw("Done")
         assertEquals(3, callCount)
     }
 
@@ -502,7 +502,12 @@ class JiraCliAdapterTest {
 
         statuses.forEach { expectedStatus ->
             val result = adapter.getTaskStatus("TEST-123")
-            assertEquals(TaskSearchResult.Found(expectedStatus), result)
+            result.assertFoundRaw(expectedStatus)
         }
+    }
+
+    private fun TaskSearchResult.assertFoundRaw(expectedRaw: String) {
+        assertTrue(this is TaskSearchResult.Found) { "Expected Found result but was $this" }
+        assertEquals(expectedRaw, (this as TaskSearchResult.Found).status.raw)
     }
 }

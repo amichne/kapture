@@ -25,28 +25,18 @@ sealed class Plugin(val type: Type) {
     data class Http(
         val baseUrl: String = "http://localhost:8080",
         val auth: Authentication = Authentication.None,
-        val timeoutMs: Long = 10_000
+        val timeoutMs: Long = 10_000,
+        val provider: String = "jira"
     ) : Plugin(Type.HTTP)
 
-    /**
-     * Delegates to the community Jira CLI tool. The executable is expected to
-     * be available on the user's PATH unless overridden. Optional environment
-     * variables can be supplied for authentication (PAT, email, site).
-     */
-    @Serializable
-    @SerialName("cli")
-    data class Cli(
-        val executable: String,
-        val environment: Map<String, String>,
-        val timeoutSeconds: Long
-    ) : Plugin(Type.CLI)
-
     companion object {
+
+
         fun Integration<Cli>.toPlugin(
             executable: String = connection.executable,
             environment: Map<String, String> = connection.environment,
-            timeoutSeconds: Long = connection.timeoutSeconds
-        ): Cli = Cli(
+            timeoutSeconds: Long = connection.timeoutSeconds,
+        ): Cli.Jira = Cli.Jira(
             executable = executable,
             environment = environment,
             timeoutSeconds = timeoutSeconds

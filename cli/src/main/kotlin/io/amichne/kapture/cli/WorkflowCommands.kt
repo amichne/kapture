@@ -4,6 +4,7 @@ import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.git.BranchUtils
 import io.amichne.kapture.core.model.config.Config
+import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
 import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
@@ -67,10 +68,14 @@ object WorkflowCommands {
         val statusResult = client.getTaskStatus(subtaskId)
         when (statusResult) {
             is TaskSearchResult.Found -> {
-                val normalizedStatus = statusResult.status.replace(" ", "_").uppercase()
-                if (!normalizedStatus.contains("READY") && !normalizedStatus.contains("IN_PROGRESS")) {
+                val normalizedStatus = statusResult.normalizedStatus()
+                val internalAllowed = statusResult.status.internal?.let {
+                    it == InternalStatus.TODO || it == InternalStatus.IN_PROGRESS
+                } == true
+                val legacyAllowed = normalizedStatus.contains("READY") || normalizedStatus.contains("IN_PROGRESS")
+                if (!internalAllowed && !legacyAllowed) {
                     System.err.println("✗ Subtask ${subtaskId} must be in 'Ready for Dev' status")
-                    System.err.println("  Current status: ${statusResult.status}")
+                    System.err.println("  Current status: ${statusResult.displayStatus()}")
                     exitProcess(1)
                 }
             }
@@ -148,10 +153,13 @@ object WorkflowCommands {
         val statusResult = client.getTaskStatus(subtaskId)
         when (statusResult) {
             is TaskSearchResult.Found -> {
-                val normalizedStatus = statusResult.status.replace(" ", "_").uppercase()
-                if (!normalizedStatus.contains("IN_PROGRESS")) {
+                val status = statusResult.status
+                val normalizedStatus = statusResult.normalizedStatus()
+                val internalAllowed = status.internal == InternalStatus.IN_PROGRESS
+                val legacyAllowed = normalizedStatus.contains("IN_PROGRESS")
+                if (!internalAllowed && !legacyAllowed) {
                     System.err.println("✗ Subtask ${subtaskId} must be in 'In Progress' status")
-                    System.err.println("  Current status: ${statusResult.status}")
+                    System.err.println("  Current status: ${statusResult.displayStatus()}")
                     exitProcess(1)
                 }
             }
@@ -259,10 +267,13 @@ object WorkflowCommands {
         val statusResult = client.getTaskStatus(subtaskId)
         when (statusResult) {
             is TaskSearchResult.Found -> {
-                val normalizedStatus = statusResult.status.replace(" ", "_").uppercase()
-                if (!normalizedStatus.contains("CODE_REVIEW") && !normalizedStatus.contains("REVIEW")) {
+                val status = statusResult.status
+                val normalizedStatus = statusResult.normalizedStatus()
+                val internalAllowed = status.internal == InternalStatus.REVIEW
+                val legacyAllowed = normalizedStatus.contains("CODE_REVIEW") || normalizedStatus.contains("REVIEW")
+                if (!internalAllowed && !legacyAllowed) {
                     System.err.println("✗ Subtask ${subtaskId} must be in 'Code Review' status")
-                    System.err.println("  Current status: ${statusResult.status}")
+                    System.err.println("  Current status: ${statusResult.displayStatus()}")
                     exitProcess(1)
                 }
             }
@@ -363,4 +374,10 @@ object WorkflowCommands {
         Environment.debug { "Finding related PRs for parent ${parentKey}, excluding ${currentKey}" }
         return emptyList()
     }
+
+    private fun TaskSearchResult.Found.displayStatus(): String =
+        status.raw ?: status.internal?.name ?: "UNKNOWN"
+
+    private fun TaskSearchResult.Found.normalizedStatus(): String =
+        displayStatus().replace(" ", "_").uppercase()
 }

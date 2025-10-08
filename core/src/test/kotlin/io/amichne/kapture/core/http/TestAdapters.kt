@@ -4,22 +4,30 @@ import io.amichne.kapture.core.adapter.Adapter
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
 import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 import io.amichne.kapture.core.model.task.TaskTransitionResult
+import io.amichne.kapture.test.foundStatus
 
 /**
  * Mock adapter for testing that tracks all invocations and allows
  * configurable responses.
  */
 class MockAdapter(
-    private val taskResult: TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS"),
+    private val taskResult: TaskSearchResult = foundStatus("In Progress"),
     private val taskResultProvider: ((String) -> TaskSearchResult)? = null
 ) : Adapter {
     val calls = mutableListOf<AdapterCall>()
 
     override fun getTaskStatus(taskId: String): TaskSearchResult {
         calls.add(AdapterCall.GetTaskStatus(taskId))
-        return taskResultProvider?.invoke(taskId) ?: taskResult
+        val provided = taskResultProvider?.invoke(taskId)
+        if (provided != null) return provided
+        return when (taskResult) {
+            is TaskSearchResult.Found -> TaskSearchResult.Found(taskResult.status.copy(key = taskId))
+            else -> taskResult
+        }
     }
 
     override fun trackSession(snapshot: SessionSnapshot) {
@@ -110,13 +118,18 @@ class FailingAdapter(
  * Adapter that simulates various task statuses for testing.
  */
 class StatefulAdapter : Adapter {
-    private val taskStatuses = mutableMapOf<String, String>()
+    private val taskStatuses = mutableMapOf<String, TaskStatus>()
 
     fun setTaskStatus(
         taskId: String,
         status: String
     ) {
-        taskStatuses[taskId] = status
+        taskStatuses[taskId] = TaskStatus(
+            provider = "stateful",
+            key = taskId,
+            raw = status,
+            internal = inferInternal(status)
+        )
     }
 
     fun removeTask(taskId: String) {
@@ -128,10 +141,7 @@ class StatefulAdapter : Adapter {
     }
 
     override fun getTaskStatus(taskId: String): TaskSearchResult {
-        return when (val status = taskStatuses[taskId]) {
-            null -> TaskSearchResult.NotFound
-            else -> TaskSearchResult.Found(status)
-        }
+        return taskStatuses[taskId]?.let { TaskSearchResult.Found(it) } ?: TaskSearchResult.NotFound
     }
 
     override fun trackSession(snapshot: SessionSnapshot) {
@@ -148,7 +158,7 @@ class StatefulAdapter : Adapter {
         taskId: String,
         targetStatus: String
     ): TaskTransitionResult {
-        taskStatuses[taskId] = targetStatus
+        setTaskStatus(taskId, targetStatus)
         return TaskTransitionResult.Success
     }
 
@@ -157,5 +167,18 @@ class StatefulAdapter : Adapter {
 
     override fun close() {
         // No-op
+    }
+}
+
+private fun inferInternal(rawStatus: String?): InternalStatus? {
+    if (rawStatus.isNullOrBlank()) return null
+    val canonical = rawStatus.trim().replace("\\s+".toRegex(), "_").uppercase()
+    return when {
+        canonical.contains("BLOCK") -> InternalStatus.BLOCKED
+        canonical.contains("REVIEW") -> InternalStatus.REVIEW
+        canonical.contains("PROGRESS") -> InternalStatus.IN_PROGRESS
+        canonical.contains("DONE") || canonical.contains("CLOSE") -> InternalStatus.DONE
+        canonical.contains("READY") || canonical.contains("TODO") || canonical.contains("OPEN") -> InternalStatus.TODO
+        else -> null
     }
 }

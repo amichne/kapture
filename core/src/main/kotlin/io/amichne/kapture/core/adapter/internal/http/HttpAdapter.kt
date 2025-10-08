@@ -7,6 +7,7 @@ import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
 import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 import io.amichne.kapture.core.model.task.TaskStatusResponse
 import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.core.util.Environment
@@ -63,7 +64,13 @@ internal class HttpAdapter(
                     return@runBlocking TaskSearchResult.NotFound
                 }
                 val body = response.body<TaskStatusResponse>()
-                TaskSearchResult.Found(body.status)
+                TaskSearchResult.Found(
+                    TaskStatus(
+                        provider = integration.provider,
+                        key = taskId,
+                        raw = body.status
+                    )
+                )
             } catch (ex: ClientRequestException) {
                 if (ex.response.status == HttpStatusCode.Companion.NotFound) {
                     TaskSearchResult.NotFound

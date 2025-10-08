@@ -40,6 +40,23 @@ Shut everything down with `docker compose down --volumes`. See the
 
 </details>
 
+### Recording-friendly playground
+
+Want a guided terminal session you can screen-record? Bring up the demo container (Docker required):
+
+```bash
+# Set a real Jira story key so the walkthrough has something to attach to
+export PLAYGROUND_PARENT_KEY=PROJ-123
+
+# Build the image and launch the scripted walkthrough
+./scripts/playground-demo.sh
+```
+
+The container seeds a repo, runs `git kapture subtask|branch|review|merge`, and then drops you into an interactive shell
+for retakes. Use `PLAYGROUND_SKIP_GH=true` to skip the review/merge steps when GitHub CLI is unavailable, or pass
+`--skip-demo` / `--no-shell` flags to customise the flow. Review the script in
+[`playground/demo-script.sh`](playground/demo-script.sh) to see the exact sequence.
+
 ## How it works
 
 ```mermaid

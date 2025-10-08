@@ -4,6 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class StatusRules(
-    val allowCommitWhen: Set<String> = setOf("IN_PROGRESS", "READY"),
-    val allowPushWhen: Set<String> = setOf("READY", "IN_REVIEW")
+    val allowCommitWhen: Set<String> = setOf("TODO", "IN_PROGRESS"),
+    val allowPushWhen: Set<String> = setOf("REVIEW", "DONE")
 )

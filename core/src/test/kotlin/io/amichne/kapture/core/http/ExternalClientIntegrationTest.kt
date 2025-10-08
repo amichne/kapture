@@ -3,10 +3,13 @@ package io.amichne.kapture.core.http
 import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.config.Integration
 import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Cli
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
+import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -38,7 +41,7 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient from JiraCli integration creates working client`() {
-        val integration = Plugin.Cli(
+        val integration = Cli.Jira(
             executable = "jira",
             environment = mapOf("JIRA_API_TOKEN" to "test"),
             timeoutSeconds = 30
@@ -99,8 +102,8 @@ class ExternalClientIntegrationTest {
             taskResultProvider = { taskId ->
                 when {
                     taskId.isBlank() -> TaskSearchResult.NotFound
-                    taskId.startsWith("VALID") -> TaskSearchResult.Found("IN_PROGRESS")
-                    taskId.startsWith("DONE") -> TaskSearchResult.Found("DONE")
+                    taskId.startsWith("VALID") -> foundStatus(taskId, "In Progress", InternalStatus.IN_PROGRESS)
+                    taskId.startsWith("DONE") -> foundStatus(taskId, "Done", InternalStatus.DONE)
                     else -> TaskSearchResult.Error("Unknown task")
                 }
             }
@@ -109,8 +112,8 @@ class ExternalClientIntegrationTest {
         val client = ExternalClient.wrap(adapter)
 
         assertEquals(TaskSearchResult.NotFound, client.getTaskStatus(""))
-        assertEquals(TaskSearchResult.Found("IN_PROGRESS"), client.getTaskStatus("VALID-123"))
-        assertEquals(TaskSearchResult.Found("DONE"), client.getTaskStatus("DONE-456"))
+        client.getTaskStatus("VALID-123").assertFoundRaw("In Progress", InternalStatus.IN_PROGRESS)
+        client.getTaskStatus("DONE-456").assertFoundRaw("Done", InternalStatus.DONE)
         assertEquals(TaskSearchResult.Error("Unknown task"), client.getTaskStatus("OTHER-789"))
 
         assertEquals(4, adapter.calls.size)
@@ -139,16 +142,16 @@ class ExternalClientIntegrationTest {
 
         val client = ExternalClient.wrap(adapter)
 
-        assertEquals(TaskSearchResult.Found("To Do"), client.getTaskStatus("PROJ-1"))
-        assertEquals(TaskSearchResult.Found("In Progress"), client.getTaskStatus("PROJ-2"))
-        assertEquals(TaskSearchResult.Found("Done"), client.getTaskStatus("PROJ-3"))
+        client.getTaskStatus("PROJ-1").assertFoundRaw("To Do")
+        client.getTaskStatus("PROJ-2").assertFoundRaw("In Progress")
+        client.getTaskStatus("PROJ-3").assertFoundRaw("Done")
         assertEquals(TaskSearchResult.NotFound, client.getTaskStatus("PROJ-4"))
 
         // Update state
         adapter.setTaskStatus("PROJ-1", "Done")
         adapter.removeTask("PROJ-2")
 
-        assertEquals(TaskSearchResult.Found("Done"), client.getTaskStatus("PROJ-1"))
+        client.getTaskStatus("PROJ-1").assertFoundRaw("Done")
         assertEquals(TaskSearchResult.NotFound, client.getTaskStatus("PROJ-2"))
 
         client.close()
@@ -156,8 +159,8 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `multiple ExternalClient instances work independently`() {
-        val adapter1 = MockAdapter(taskResult = TaskSearchResult.Found("Status1"))
-        val adapter2 = MockAdapter(taskResult = TaskSearchResult.Found("Status2"))
+        val adapter1 = MockAdapter(taskResult = foundStatus("TEST-1", "Status1"))
+        val adapter2 = MockAdapter(taskResult = foundStatus("TEST-2", "Status2"))
 
         val client1 = ExternalClient.wrap(adapter1)
         val client2 = ExternalClient.wrap(adapter2)
@@ -165,8 +168,8 @@ class ExternalClientIntegrationTest {
         val result1 = client1.getTaskStatus("TEST-1")
         val result2 = client2.getTaskStatus("TEST-2")
 
-        assertEquals(TaskSearchResult.Found("Status1"), result1)
-        assertEquals(TaskSearchResult.Found("Status2"), result2)
+        result1.assertFoundRaw("Status1")
+        result2.assertFoundRaw("Status2")
 
         client1.close()
         client2.close()
@@ -202,4 +205,25 @@ class ExternalClientIntegrationTest {
             client.close()
         }
     }
+}
+
+private fun foundStatus(
+    key: String,
+    raw: String,
+    internal: InternalStatus? = null,
+    provider: String = "test"
+): TaskSearchResult = TaskSearchResult.Found(
+    TaskStatus(
+        provider = provider,
+        key = key,
+        raw = raw,
+        internal = internal
+    )
+)
+
+private fun TaskSearchResult.assertFoundRaw(expectedRaw: String, expectedInternal: InternalStatus? = null) {
+    val found = this as? TaskSearchResult.Found
+        ?: throw AssertionError("Expected TaskSearchResult.Found but was $this")
+    assertEquals(expectedRaw, found.status.raw)
+    expectedInternal?.let { assertEquals(it, found.status.internal) }
 }

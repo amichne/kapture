@@ -1,6 +1,7 @@
 package io.amichne.kapture.core.config
 
 import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Cli
 import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.util.ConfigLoader
@@ -36,7 +37,7 @@ class ConfigTest {
         val config = ConfigLoader.load(configFile)
 
         // Uses defaults for external
-        assertTrue(config.external is Plugin.Cli)
+        assertTrue(config.external is Cli)
         assertTrue(config.trackingEnabled)
         assertEquals(1000L, config.sessionTrackingIntervalMs)
     }
@@ -45,7 +46,7 @@ class ConfigTest {
     fun `load falls back to defaults when file missing`() {
         val config = ConfigLoader.load(tempDir.resolve("missing.json"))
 
-        val external = config.external as Plugin.Cli
+        val external = config.external as Cli
         assertEquals("jira-cli", external.executable)
         assertTrue(config.trackingEnabled)
     }
@@ -97,7 +98,7 @@ class ConfigTest {
 
     @Test
     fun `config has default CLI integration values`() {
-        val cliConfig = Plugin.Cli(
+        val cliConfig = Cli.Jira(
             executable = "/usr/local/bin/custom-jira",
             environment = mapOf("KEY" to "value"),
             timeoutSeconds = 45
@@ -224,7 +225,7 @@ class ConfigTest {
 
         // Should fall back to defaults
         assertNotNull(config)
-        val external = config.external as Plugin.Cli
+        val external = config.external as Cli
         assertEquals("jira-cli", external.executable)
     }
 

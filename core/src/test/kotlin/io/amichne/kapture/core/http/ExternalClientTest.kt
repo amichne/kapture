@@ -3,12 +3,15 @@ package io.amichne.kapture.core.http
 import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.adapter.Adapter
 import io.amichne.kapture.core.model.config.Authentication
+import io.amichne.kapture.core.model.config.Cli
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
 import io.amichne.kapture.core.model.task.TaskDetailsResult
 import io.amichne.kapture.core.model.task.TaskSearchResult
 import io.amichne.kapture.core.model.task.TaskTransitionResult
+import io.amichne.kapture.core.model.task.InternalStatus
+import io.amichne.kapture.core.model.task.TaskStatus
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -22,7 +25,7 @@ class ExternalClientTest {
 
         val result = client.getTaskStatus("TEST-123")
 
-        assertEquals(TaskSearchResult.Found("IN_PROGRESS"), result)
+        result.assertFoundRaw("In Progress", InternalStatus.IN_PROGRESS)
         assertEquals(1, adapter.getTaskStatusCallCount)
     }
 
@@ -90,7 +93,7 @@ class ExternalClientTest {
 
     @Test
     fun `from creates JiraCliAdapter for JiraCli integration`() {
-        val integration = Plugin.Cli(
+        val integration = Cli.Jira(
             executable = "jira",
             environment = mapOf("JIRA_API_TOKEN" to "test-token"),
             timeoutSeconds = 30
@@ -125,7 +128,14 @@ class ExternalClientTest {
     }
 
     private class TestAdapter(
-        private val taskResult: TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
+        private val taskResult: TaskSearchResult = TaskSearchResult.Found(
+            TaskStatus(
+                provider = "test",
+                key = "TEST-DEFAULT",
+                raw = "In Progress",
+                internal = InternalStatus.IN_PROGRESS
+            )
+        )
     ) : Adapter {
         var getTaskStatusCallCount = 0
         var trackSessionCallCount = 0
@@ -161,4 +171,11 @@ class ExternalClientTest {
             closeCallCount++
         }
     }
+}
+
+private fun TaskSearchResult.assertFoundRaw(expectedRaw: String, expectedInternal: InternalStatus? = null) {
+    val found = this as? TaskSearchResult.Found
+        ?: throw AssertionError("Expected TaskSearchResult.Found but was $this")
+    assertEquals(expectedRaw, found.status.raw)
+    expectedInternal?.let { assertEquals(it, found.status.internal) }
 }

@@ -1,6 +1,8 @@
 package io.amichne.kapture.core.http
 
+import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
@@ -11,9 +13,10 @@ class TaskSearchResultTest {
 
     @Test
     fun `Found result contains status`() {
-        val result = TaskSearchResult.Found("IN_PROGRESS")
+        val result = found("IN_PROGRESS", InternalStatus.IN_PROGRESS)
 
-        assertEquals("IN_PROGRESS", result.status)
+        assertEquals("IN_PROGRESS", result.status.raw)
+        assertEquals(InternalStatus.IN_PROGRESS, result.status.internal)
     }
 
     @Test
@@ -33,16 +36,16 @@ class TaskSearchResultTest {
 
     @Test
     fun `Found results are equal when status matches`() {
-        val result1 = TaskSearchResult.Found("DONE")
-        val result2 = TaskSearchResult.Found("DONE")
+        val result1 = found("DONE", InternalStatus.DONE)
+        val result2 = found("DONE", InternalStatus.DONE)
 
         assertEquals(result1, result2)
     }
 
     @Test
     fun `Found results are not equal when status differs`() {
-        val result1 = TaskSearchResult.Found("DONE")
-        val result2 = TaskSearchResult.Found("IN_PROGRESS")
+        val result1 = found("DONE", InternalStatus.DONE)
+        val result2 = found("IN_PROGRESS", InternalStatus.IN_PROGRESS)
 
         assertNotEquals(result1, result2)
     }
@@ -65,7 +68,7 @@ class TaskSearchResultTest {
 
     @Test
     fun `different result types are not equal`() {
-        val found = TaskSearchResult.Found("DONE")
+        val found = found("DONE", InternalStatus.DONE)
         val notFound = TaskSearchResult.NotFound
         val error = TaskSearchResult.Error("error")
 
@@ -76,9 +79,9 @@ class TaskSearchResultTest {
 
     @Test
     fun `Found result toString includes status`() {
-        val result = TaskSearchResult.Found("IN_PROGRESS")
+        val result = found("In Progress", InternalStatus.IN_PROGRESS)
 
-        assertTrue(result.toString().contains("IN_PROGRESS"))
+        assertTrue(result.toString().contains("In Progress"))
     }
 
     @Test
@@ -88,3 +91,17 @@ class TaskSearchResultTest {
         assertTrue(result.toString().contains("connection failed"))
     }
 }
+
+private fun found(
+    raw: String,
+    internal: InternalStatus? = null,
+    provider: String = "test",
+    key: String = "TEST-123"
+): TaskSearchResult.Found = TaskSearchResult.Found(
+    TaskStatus(
+        provider = provider,
+        key = key,
+        raw = raw,
+        internal = internal
+    )
+)

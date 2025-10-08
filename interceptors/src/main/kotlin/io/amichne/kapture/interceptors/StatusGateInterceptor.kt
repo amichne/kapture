@@ -7,6 +7,7 @@ import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.config.Enforcement
 import io.amichne.kapture.core.model.config.StatusRules
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 
 class StatusGateInterceptor : GitInterceptor {
     /**
@@ -43,7 +44,11 @@ class StatusGateInterceptor : GitInterceptor {
         }
 
         val message = when (result) {
-            is TaskSearchResult.Found -> "Task ${task} status ${result.status} blocks $command"
+            is TaskSearchResult.Found -> {
+                val status = result.status
+                val descriptor = status.internal?.name ?: status.raw ?: "UNKNOWN"
+                "Task ${task} status $descriptor blocks $command"
+            }
             TaskSearchResult.NotFound -> "Task $task not found; cannot $command"
             is TaskSearchResult.Error -> "Task lookup failed (${result.message}); cannot verify status"
         }
@@ -80,12 +85,13 @@ class StatusGateInterceptor : GitInterceptor {
 
     private fun isStatusAllowed(
         command: String,
-        status: String,
+        status: TaskStatus,
         rules: StatusRules
     ): Boolean {
+        val internalName = status.internal?.name ?: return false
         return when (command) {
-            "commit" -> status in rules.allowCommitWhen
-            "push" -> status in rules.allowPushWhen
+            "commit" -> internalName in rules.allowCommitWhen
+            "push" -> internalName in rules.allowPushWhen
             else -> true
         }
     }

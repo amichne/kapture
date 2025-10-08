@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+COMPOSE_FILE="$PROJECT_ROOT/virtualization/stack/docker-compose.yml"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-kapture-integration}"
 COMPOSE_CMD=(docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE")
 KEEP_CONTAINERS=false
@@ -56,6 +56,7 @@ header() {
 require_cmd docker
 require_cmd curl
 require_cmd git
+require_cmd jq
 
 if ! docker compose version >/dev/null 2>&1; then
   echo "The Docker Compose plugin is required (docker compose)" >&2
@@ -149,40 +150,31 @@ header "Test 1: docker-compose.yml validation"
 "${COMPOSE_CMD[@]}" config >/dev/null
 echo "✓ docker-compose.yml is syntactically valid"
 
-header "Test 2: Start Jira stack"
-"${COMPOSE_CMD[@]}" up -d postgres jira
-wait_for_service postgres healthy 40 5 || { echo "✗ Postgres failed to report healthy" >&2; exit 1; }
-echo "✓ Postgres container is healthy"
-wait_for_service jira running 120 10 || { echo "✗ Jira container failed to report running" >&2; exit 1; }
-echo "✓ Jira container is running"
-wait_for_http "http://localhost:8080" "Jira application" 120 10 || { echo "✗ Jira HTTP endpoint did not respond" >&2; exit 1; }
-echo "✓ Jira responds on http://localhost:8080"
+header "Test 2: Start Jira mock server"
+"${COMPOSE_CMD[@]}" up -d jira
+wait_for_service jira running 120 5 || { echo "✗ Jira mock container failed to report running" >&2; exit 1; }
+echo "✓ Jira mock container is running"
+wait_for_http "http://localhost:8080/rest/api/3/serverInfo" "Jira mock server" 120 5 || { echo "✗ Jira mock HTTP endpoint did not respond" >&2; exit 1; }
+echo "✓ Jira mock responds on http://localhost:8080"
 
-header "Test 3: jira-cli smoke checks"
-"${COMPOSE_CMD[@]}" run --rm jira-cli version >/dev/null
-echo "✓ jira-cli version command executes"
-"${COMPOSE_CMD[@]}" run --rm jira-cli help >/dev/null
-echo "✓ jira-cli help command executes"
-
-EXPECTED_SERVER="http://jira:8080"
-EXPECTED_EMAIL="${JIRA_USER_EMAIL:-user@example.com}"
-EXPECTED_TOKEN="${JIRA_API_TOKEN:-changeme}"
-
-CLI_SERVER=$("${COMPOSE_CMD[@]}" run --rm --entrypoint sh jira-cli -c 'printf %s "$JIRA_SERVER"')
-CLI_SERVER=$(echo "$CLI_SERVER" | tr -d '\r')
-if [[ "$CLI_SERVER" != "$EXPECTED_SERVER" ]]; then
-  echo "✗ jira-cli JIRA_SERVER mismatch (expected $EXPECTED_SERVER, got $CLI_SERVER)" >&2
+header "Test 3: Jira mock API smoke checks"
+SERVER_TITLE=$(curl -fsS "http://localhost:8080/rest/api/3/serverInfo" | jq -r '.serverTitle' 2>/dev/null || echo "")
+if [[ "$SERVER_TITLE" == "Kapture Jira Mock" ]]; then
+  echo "✓ /rest/api/3/serverInfo returns expected payload"
+else
+  echo "✗ Unexpected serverInfo payload (serverTitle=$SERVER_TITLE)" >&2
   exit 1
 fi
 
-CLI_EMAIL=$("${COMPOSE_CMD[@]}" run --rm --entrypoint sh jira-cli -c 'printf %s "$JIRA_USER_EMAIL"')
-CLI_EMAIL=$(echo "$CLI_EMAIL" | tr -d '\r')
-if [[ "$CLI_EMAIL" != "$EXPECTED_EMAIL" ]]; then
-  echo "✗ jira-cli JIRA_USER_EMAIL mismatch (expected $EXPECTED_EMAIL, got $CLI_EMAIL)" >&2
+ISSUE_RESPONSE=$(curl -fsS "http://localhost:8080/rest/api/3/search?maxResults=1" 2>/dev/null || true)
+if echo "$ISSUE_RESPONSE" | jq -e '.issues | length >= 0' >/dev/null 2>&1; then
+  echo "✓ /rest/api/3/search responds successfully"
+else
+  echo "✗ Jira mock search endpoint failed" >&2
   exit 1
 fi
 
-echo "✓ jira-cli inherits expected environment"
+
 
 # Write kapture configuration pointing at the local Jira stack
 if [[ -f "$CONFIG_FILE" ]]; then
@@ -195,11 +187,36 @@ fi
 mkdir -p "$(dirname "$CONFIG_FILE")"
 cat > "$CONFIG_FILE" <<'EOF'
 {
-  "externalBaseUrl": "http://localhost:8080",
   "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+  "externalBaseUrl": "http://localhost:8080",
   "enforcement": {
     "branchPolicy": "WARN",
     "statusCheck": "OFF"
+  },
+  "statusRules": {
+    "allowCommitWhen": ["IN_PROGRESS", "REVIEW"],
+    "allowPushWhen": ["REVIEW", "DONE"]
+  },
+  "ticketMapping": {
+    "default": "TODO",
+    "providers": [
+      {
+        "provider": "jira",
+        "rules": [
+          { "to": "IN_PROGRESS", "match": ["In Progress", "Implementing"] },
+          { "to": "REVIEW",      "match": ["In Review"] },
+          { "to": "BLOCKED",     "match": ["Blocked"] },
+          { "to": "DONE",        "match": ["Done", "Resolved"] }
+        ]
+      }
+    ]
+  },
+  "immediateRules": {
+    "enabled": true,
+    "optOutFlags": ["-nk", "--no-kapture"],
+    "optOutEnvVars": ["KAPTURE_OPTOUT"],
+    "bypassCommands": ["help", "--version", "--exec-path"],
+    "bypassArgsContains": ["--list-cmds"]
   },
   "trackingEnabled": false,
   "realGitHint": null
@@ -281,7 +298,7 @@ else
 fi
 
 header "Test 7: Branch policy warning"
-if "$BINARY" checkout -b invalid-name 2>&1 | grep -q "WARNING"; then
+if "$BINARY" checkout -b invalid-name 2>&1 | grep -qi "warn"; then
   echo "✓ Branch policy warning displayed"
 else
   echo "⚠ Branch policy warning not displayed (policy may be permissive)"
@@ -312,7 +329,22 @@ else
   echo "⚠ kapture status failed (expected if API credentials missing)"
 fi
 
-header "Test 10: TTY inheritance"
+header "Test 10: Opt-out flags bypass enforcement"
+if "$BINARY" -nk status >/dev/null 2>&1; then
+  echo "✓ Opt-out flag (-nk) bypasses interceptors"
+else
+  echo "✗ Opt-out flag handling failed" >&2
+  exit 1
+fi
+
+if KAPTURE_OPTOUT=1 "$BINARY" status >/dev/null 2>&1; then
+  echo "✓ Opt-out environment variable bypasses interceptors"
+else
+  echo "✗ Opt-out environment variable handling failed" >&2
+  exit 1
+fi
+
+header "Test 11: TTY inheritance"
 echo "line 1" > interactive.txt
 echo "line 2" >> interactive.txt
 "$BINARY" add interactive.txt
@@ -326,7 +358,7 @@ else
   echo "⚠ Skipping diff timeout check (timeout command unavailable)"
 fi
 
-header "Test 11: Exit code preservation"
+header "Test 12: Exit code preservation"
 if "$BINARY" status >/dev/null 2>&1; then
   echo "✓ Exit code preserved (success)"
 else
@@ -334,18 +366,14 @@ else
   exit 1
 fi
 
-FAILED=0
 if ! "$BINARY" checkout nonexistent-branch >/dev/null 2>&1; then
-  FAILED=1
-fi
-if [[ $FAILED -eq 1 ]]; then
   echo "✓ Exit code preserved (failure)"
 else
   echo "✗ Exit code not preserved on failure" >&2
   exit 1
 fi
 
-header "Test 12: Environment preservation"
+header "Test 13: Environment preservation"
 export GIT_AUTHOR_NAME="Test Override"
 AUTHOR=$("$BINARY" var GIT_AUTHOR_IDENT | cut -d'<' -f1 | xargs)
 if [[ "$AUTHOR" == "Test Override" ]]; then

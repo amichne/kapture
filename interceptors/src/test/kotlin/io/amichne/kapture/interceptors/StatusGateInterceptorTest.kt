@@ -9,7 +9,9 @@ import io.amichne.kapture.core.model.config.Enforcement.Mode
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
 import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.interceptors.support.GitTestRepository
 import org.junit.jupiter.api.AfterEach
@@ -49,7 +51,15 @@ class StatusGateInterceptorTest {
             repo.environment()
         )
         val client = ExternalClient.wrap(object : Adapter {
-            override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("BLOCKED")
+            override fun getTaskStatus(taskId: String): TaskSearchResult =
+                TaskSearchResult.Found(
+                    TaskStatus(
+                        provider = "test",
+                        key = taskId,
+                        raw = "Blocked",
+                        internal = InternalStatus.BLOCKED
+                    )
+                )
             override fun trackSession(snapshot: SessionSnapshot) {}
             override fun createSubtask(
                 parentId: String,

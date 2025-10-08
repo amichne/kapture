@@ -8,7 +8,9 @@ import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.session.SessionTimekeeper
 import io.amichne.kapture.core.model.task.SubtaskCreationResult
 import io.amichne.kapture.core.model.task.TaskDetailsResult
+import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.TaskSearchResult
+import io.amichne.kapture.core.model.task.TaskStatus
 import io.amichne.kapture.core.model.task.TaskTransitionResult
 import io.amichne.kapture.interceptors.support.GitTestRepository
 import kotlinx.datetime.Instant
@@ -49,7 +51,8 @@ class SessionTrackingInterceptorTest {
         val clock = MutableClock(Instant.parse("2024-01-01T00:00:00Z"))
         val snapshots = mutableListOf<SessionSnapshot>()
         val client = ExternalClient.wrap(object : Adapter {
-            override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
+            override fun getTaskStatus(taskId: String): TaskSearchResult =
+                taskFound("In Progress", InternalStatus.IN_PROGRESS, taskId)
             override fun trackSession(snapshot: SessionSnapshot) {
                 snapshots += snapshot
             }
@@ -103,7 +106,8 @@ class SessionTrackingInterceptorTest {
         val clock = MutableClock(Instant.parse("2024-01-02T00:00:00Z"))
         val snapshots = mutableListOf<SessionSnapshot>()
         val client = ExternalClient.wrap(object : Adapter {
-            override fun getTaskStatus(taskId: String): TaskSearchResult = TaskSearchResult.Found("IN_PROGRESS")
+            override fun getTaskStatus(taskId: String): TaskSearchResult =
+                taskFound("In Progress", InternalStatus.IN_PROGRESS, taskId)
             override fun trackSession(snapshot: SessionSnapshot) {
                 snapshots += snapshot
             }
@@ -147,3 +151,13 @@ class SessionTrackingInterceptorTest {
         }
     }
 }
+
+private fun taskFound(raw: String, internal: InternalStatus, key: String): TaskSearchResult =
+    TaskSearchResult.Found(
+        TaskStatus(
+            provider = "test",
+            key = key,
+            raw = raw,
+            internal = internal
+        )
+    )
