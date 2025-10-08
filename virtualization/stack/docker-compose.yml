@@ -1,0 +1,13 @@
+services:
+  jira:
+    build:
+      context: ../jira
+      dockerfile: Dockerfile
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    environment:
+      JIRA_MOCK_SEED: ${JIRA_MOCK_SEED:-}
+      JIRA_MOCK_PROJECTS: ${JIRA_MOCK_PROJECTS:-}
+      JIRA_MOCK_ISSUES: ${JIRA_MOCK_ISSUES:-}
+      JIRA_MOCK_BASE_URL: ${JIRA_MOCK_BASE_URL:-http://jira:8080}
