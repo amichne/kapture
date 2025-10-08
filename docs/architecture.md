@@ -9,6 +9,7 @@ system.
 - `core` owns shared primitives: configuration loading, process execution, logging, and the external client facade.
 - `interceptors` contribute policy hooks that run before/after Git executes.
 - `cli` wires everything together, resolves the real Git binary, and is the only module that produces runnable artefacts.
+- `virtualization/jira` contains the JSON-backed Jira mock used in integration tests and local smoke runs.
 
 ## System map
 

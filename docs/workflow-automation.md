@@ -130,11 +130,18 @@ $ git kapture merge
 - **Status gates** – disallowed ticket states produce a red ✗ with the required status listed.
 - **External outages** – Jira CLI failures log diagnostics (enable `KAPTURE_DEBUG=1`) but do not corrupt your Git repo.
 
+### Temporarily skipping enforcement
+
+- Append `-nk` or `--no-kapture` to any git command to bypass all interceptors for that invocation.
+- Set `KAPTURE_OPTOUT=1` in CI or shell sessions when you need a broader exemption. The shim strips opt-out flags before
+  delegating to Git, so the underlying command never sees them.
+
 ## Smoke testing the workflow
 
-- Local validation: `docker compose up -d postgres jira` then run `scripts/integration-test.sh` to exercise the stack.
-- CI pipelines: reuse the integration script; it boots the docker-compose stack, waits for health checks, runs
-  native-wrapper regression tests, and tears everything down.
+- Local validation: `docker compose -f virtualization/stack/docker-compose.yml up -d` then run
+  `scripts/integration-test.sh` (or `make integration`).
+- CI pipelines: reuse the integration script; it boots the mock stack, waits for readiness, runs regression tests, and
+  tears everything down.
 
 ## Limitations & roadmap
 

@@ -1,8 +1,17 @@
 # Jira Mock Server
 
-This directory hosts a lightweight mock implementation of the Jira REST API defined by `openapi.json`. It is intended for local development and automated tests where spinning up a full Jira instance is impractical.
+A minimal Jira façade backed by static JSON fixtures. It responds to a curated set of REST endpoints – just enough to
+exercise the Kapture CLI in local development and CI pipelines without a full Jira deployment.
 
-## Getting started
+## Behaviour at a glance
+
+- Seeds data from the JSON files in `virtualization/jira/resources` (projects, boards, issues, fields, etc.).
+- Writes changes (new issues, status transitions) to `virtualization/jira/data/state.json` by default. Delete the file
+to reset back to the seed data.
+- Implements the routes referenced by the fixtures (create meta, search, issue read/write, transitions, boards/sprints,
+  users, releases). Unhandled routes return `404` with a short message.
+
+## Running locally
 
 ```bash
 cd virtualization/jira
@@ -10,22 +19,35 @@ npm install
 npm start
 ```
 
-By default the server listens on port `8080` and seeds a handful of randomized projects and issues. The following environment variables can be used to influence the generated data:
+Environment variables:
 
-- `PORT` or `JIRA_MOCK_PORT` – override the listen port (defaults to `8080`).
-- `JIRA_MOCK_BASE_URL` – base URL used when constructing `self` links in responses (defaults to `http://localhost:8080`).
-- `JIRA_MOCK_SEED` – when set to a number, produces deterministic test data.
-- `JIRA_MOCK_PROJECTS` – number of projects to generate (defaults to 3).
-- `JIRA_MOCK_ISSUES` – number of top-level issues per project (defaults to 8).
+| Variable          | Description                                                      | Default                          |
+|-------------------|------------------------------------------------------------------|----------------------------------|
+| `PORT`            | Listen port                                                       | `8080`                           |
+| `JIRA_MOCK_PORT`  | Alternative way to set the listen port                            |                                  |
+| `JIRA_MOCK_BASE_URL` | Base URL used when constructing `self` links                    | `http://localhost:PORT`          |
+| `JIRA_MOCK_DB`    | Path to the persisted JSON state                                  | `./data/state.json`              |
 
-## Docker
-
-A container image can be built with Docker using the provided Dockerfile:
+## Docker / Compose
 
 ```bash
+# Build the image
 cd virtualization/jira
+npm install
 docker build -t kapture-jira-mock .
-docker run -p 8080:8080 kapture-jira-mock
+
+# Or via docker compose (preferred)
+docker compose -f ../stack/docker-compose.yml up -d
 ```
 
-The compose stack in `virtualization/stack/docker-compose.yml` references this Dockerfile and exposes the same environment variables for customization.
+The integration harness (`scripts/integration-test.sh`) uses the compose file under `virtualization/stack` and assumes
+port 8080.
+
+## Extending the mock
+
+1. Add or edit fixtures under `virtualization/jira/resources`.
+2. Update `server.js` to serve the corresponding route (most reads are simple lookups; writes persist back to the state
+   file).
+3. Restart the container or the local server.
+
+Keep responses small and deterministic – the goal is smoke testing, not feature parity with Jira.

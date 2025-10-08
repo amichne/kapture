@@ -29,16 +29,31 @@ workflow depends on—without asking developers to learn a new tool.
 <summary>Prefer containers?</summary>
 
 ```bash
-# Bring up Jira Software, Postgres, and jira-cli locally (uses docker-compose.yml)
-docker compose up -d
-# Run smoke commands inside the jira-cli container
-docker compose run --rm jira-cli version
+# Boot the lightweight Jira mock server
+docker compose -f virtualization/stack/docker-compose.yml up -d
+
+# Run the smoke harness against the mock
+./scripts/integration-test.sh
 ```
 
-Shut everything down with `docker compose down --volumes`. See the
-[`scripts/integration-test.sh`](scripts/integration-test.sh) runner for a fully automated validation flow usable in CI.
+Shut everything down with `docker compose -f virtualization/stack/docker-compose.yml down --remove-orphans`. See
+[`scripts/integration-test.sh`](scripts/integration-test.sh) for a fully automated validation flow usable in CI.
 
 </details>
+
+### Makefile quick reference
+
+Common flows are exposed via `make`:
+
+```bash
+make help        # List available targets
+make test        # Run the JVM test suite (./gradlew test)
+make cli-test    # Module-specific tests (:cli:test, :core:test, ...)
+make native      # Build the native CLI binary
+make integration # Execute scripts/integration-test.sh
+make mock-up     # Start the Jira mock docker compose stack
+make mock-down   # Stop the mock stack
+```
 
 ### Recording-friendly playground
 
@@ -112,5 +127,6 @@ operator tips live in [`docs/configuration.md`](docs/configuration.md).
 - [`docs/configuration.md`](docs/configuration.md) – config schema, environment variables, and presets.
 - [`docs/architecture.md`](docs/architecture.md) – module layout, interceptor lifecycle, extension guide.
 - [`scripts/integration-test.sh`](scripts/integration-test.sh) – end-to-end smoke tests that mix Docker and native runs.
+- [`virtualization/jira/README.md`](virtualization/jira/README.md) – JSON-backed Jira mock used in tests.
 
 Questions or ideas? Open an issue or start a discussion—we iterate quickly when feedback is actionable.

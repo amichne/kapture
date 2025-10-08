@@ -14,8 +14,29 @@ binary. This guide highlights the fields that matter most and shows how to adapt
     "statusCheck": "OFF"
   },
   "statusRules": {
-    "allowCommitWhen": ["IN_PROGRESS", "READY"],
-    "allowPushWhen": ["READY", "IN_REVIEW"]
+    "allowCommitWhen": ["TODO", "IN_PROGRESS"],
+    "allowPushWhen": ["REVIEW", "DONE"]
+  },
+  "ticketMapping": {
+    "default": "TODO",
+    "providers": [
+      {
+        "provider": "jira",
+        "rules": [
+          { "to": "IN_PROGRESS", "match": ["In Progress", "Implementing"] },
+          { "to": "REVIEW",      "match": ["In Review"] },
+          { "to": "BLOCKED",     "match": ["Blocked"] },
+          { "to": "DONE",        "match": ["Done", "Resolved"] }
+        ]
+      }
+    ]
+  },
+  "immediateRules": {
+    "enabled": true,
+    "optOutFlags": ["-nk", "--no-kapture"],
+    "optOutEnvVars": ["KAPTURE_OPTOUT"],
+    "bypassCommands": ["help", "--version", "--exec-path"],
+    "bypassArgsContains": ["--list-cmds"]
   },
   "external": {
     "type": "jiraCli",
@@ -58,9 +79,54 @@ Configure branch policy and status checks independently via `enforcement.branchP
 <details>
 <summary>Status gates</summary>
 
-- `statusRules.allowCommitWhen` and `statusRules.allowPushWhen` accept upper-case Jira status values.
-- Provide the canonical names exactly as they appear in Jira; transitions are case-sensitive.
+- `statusRules.allowCommitWhen` and `statusRules.allowPushWhen` accept internal status names (e.g. `TODO`, `IN_PROGRESS`).
+- Feed them the values produced by your `ticketMapping`; comparisons are case-sensitive.
 - Leave a list empty to block the action outright, or omit `statusRules` entirely to fall back to built-in defaults.
+
+</details>
+
+<details>
+<summary>Ticket mapping</summary>
+
+- Converts provider-specific status strings into Kapture's internal status enum.
+- Rules are evaluated in order; the first match wins. Set `regex: true` to enable full-string regular expressions.
+- `default` fills in when no rule matches; set it to `null` to treat unknown statuses as "no status".
+
+```jsonc
+"ticketMapping": {
+  "default": "TODO",
+  "providers": [
+    {
+      "provider": "jira",
+      "rules": [
+        { "to": "IN_PROGRESS", "match": ["In Progress", "Implementing"] },
+        { "to": "REVIEW",      "match": ["In Review"] },
+        { "to": "BLOCKED",     "match": ["Blocked"] },
+        { "to": "DONE",        "match": ["Done", "Resolved"] }
+      ]
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Immediate rules</summary>
+
+- Control how the shim behaves for normal git verbs (checkout, commit, push, ...).
+- `enabled` toggles the entire interceptor pipeline. Opt-out flags/env-vars skip enforcement but still forward the command to Git.
+- `bypassCommands` / `bypassArgsContains` keep help/completion/version flows fast by skipping the interceptors entirely.
+
+```jsonc
+"immediateRules": {
+  "enabled": true,
+  "optOutFlags": ["-nk", "--no-kapture"],
+  "optOutEnvVars": ["KAPTURE_OPTOUT", "GIRA_NO_KAPTURE"],
+  "bypassCommands": ["help", "--version", "--exec-path"],
+  "bypassArgsContains": ["--list-cmds"]
+}
+```
 
 </details>
 
@@ -108,6 +174,7 @@ Kapture normalises integrations through the `external` block.
 | `REAL_GIT`        | Explicit path to the real Git binary (overrides discovery). |
 | `JIRA_USER_EMAIL` | Default Jira username/email when using `jiraCli`. |
 | `JIRA_API_TOKEN`  | Authentication token for Jira integrations.     |
+| `KAPTURE_OPTOUT`  | When set, skip all interceptors (useful in CI jobs). |
 
 Values in the environment always win over file defaults.
 
