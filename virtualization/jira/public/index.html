@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jira Mock Server - Admin UI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f4f5f7;
+      color: #172b4d;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: #0052cc;
+    }
+
+    .subtitle {
+      color: #5e6c84;
+      font-size: 14px;
+    }
+
+    .actions {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #0052cc;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #0065ff;
+    }
+
+    button.secondary {
+      background: #6c757d;
+    }
+
+    button.secondary:hover {
+      background: #5a6268;
+    }
+
+    button.danger {
+      background: #de350b;
+    }
+
+    button.danger:hover {
+      background: #bf2600;
+    }
+
+    .issues-grid {
+      display: grid;
+      gap: 15px;
+    }
+
+    .issue-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .issue-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .issue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .issue-key {
+      font-weight: 600;
+      color: #0052cc;
+      font-size: 14px;
+    }
+
+    .issue-type {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: #dfe1e6;
+      color: #42526e;
+      margin-left: 8px;
+    }
+
+    .issue-summary {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: #172b4d;
+    }
+
+    .issue-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 13px;
+      color: #5e6c84;
+      margin-bottom: 12px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-todo { background: #dfe1e6; color: #42526e; }
+    .status-inprogress { background: #deebff; color: #0052cc; }
+    .status-codereview { background: #fffae6; color: #ff8b00; }
+    .status-done { background: #e3fcef; color: #006644; }
+    .status-blocked { background: #ffebe6; color: #de350b; }
+
+    .issue-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #dfe1e6;
+    }
+
+    .issue-actions button {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-content h2 {
+      margin-bottom: 20px;
+      color: #172b4d;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      font-size: 14px;
+      color: #172b4d;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 2px solid #dfe1e6;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #0052cc;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .info-box {
+      background: #deebff;
+      border-left: 4px solid #0052cc;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .info-box strong {
+      color: #0052cc;
+    }
+
+    pre {
+      background: #f4f5f7;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚀 Jira Mock Server</h1>
+      <p class="subtitle">Simple mock server for Kapture demonstrations</p>
+    </header>
+
+    <div class="info-box">
+      <strong>API Base URL:</strong> <code id="apiUrl">http://localhost:8080/rest/api/3</code><br>
+      <strong>Issues loaded:</strong> <span id="issueCount">0</span>
+    </div>
+
+    <div class="actions">
+      <button onclick="showCreateIssueModal()">➕ Create Issue</button>
+      <button class="secondary" onclick="loadIssues()">🔄 Refresh</button>
+      <button class="danger" onclick="resetData()">⚠️ Reset to Default</button>
+    </div>
+
+    <div class="issues-grid" id="issuesGrid">
+      <!-- Issues will be loaded here -->
+    </div>
+  </div>
+
+  <!-- Create/Edit Issue Modal -->
+  <div id="issueModal" class="modal">
+    <div class="modal-content">
+      <h2 id="modalTitle">Create New Issue</h2>
+      <form id="issueForm" onsubmit="saveIssue(event)">
+        <input type="hidden" id="issueKey" />
+
+        <div class="form-group">
+          <label for="issueSummary">Summary *</label>
+          <input type="text" id="issueSummary" required />
+        </div>
+
+        <div class="form-group">
+          <label for="issueType">Type</label>
+          <select id="issueType">
+            <option value="Task">Task</option>
+            <option value="Story">Story</option>
+            <option value="Bug">Bug</option>
+            <option value="Epic">Epic</option>
+            <option value="Sub-task">Sub-task</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="issueStatus">Status</label>
+          <select id="issueStatus">
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Code Review">Code Review</option>
+            <option value="Done">Done</option>
+            <option value="Blocked">Blocked</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="issuePriority">Priority</label>
+          <select id="issuePriority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="issueParent">Parent Key (for subtasks)</label>
+          <input type="text" id="issueParent" placeholder="e.g., TEST-1" />
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit">Save</button>
+          <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/admin';
+    const JIRA_API_BASE = '/rest/api/3';
+
+    // Load issues on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      loadIssues();
+      updateApiUrl();
+    });
+
+    function updateApiUrl() {
+      const url = `${window.location.protocol}//${window.location.host}${JIRA_API_BASE}`;
+      document.getElementById('apiUrl').textContent = url;
+    }
+
+    async function loadIssues() {
+      try {
+        const response = await fetch(`${API_BASE}/issues`);
+        const issues = await response.json();
+
+        document.getElementById('issueCount').textContent = issues.length;
+        renderIssues(issues);
+      } catch (error) {
+        console.error('Failed to load issues:', error);
+        alert('Failed to load issues');
+      }
+    }
+
+    function renderIssues(issues) {
+      const grid = document.getElementById('issuesGrid');
+
+      if (issues.length === 0) {
+        grid.innerHTML = '<div class="issue-card"><p>No issues found. Create one to get started!</p></div>';
+        return;
+      }
+
+      grid.innerHTML = issues.map(issue => {
+        const statusClass = getStatusClass(issue.fields.status.name);
+        const isSubtask = issue.fields.parent;
+
+        return `
+          <div class="issue-card">
+            <div class="issue-header">
+              <div>
+                <span class="issue-key">${issue.key}</span>
+                <span class="issue-type">${issue.fields.issuetype.name}</span>
+                ${isSubtask ? `<span class="issue-type" style="background: #ffebe6; color: #de350b;">↳ Subtask</span>` : ''}
+              </div>
+              <span class="status-badge ${statusClass}">${issue.fields.status.name}</span>
+            </div>
+            <div class="issue-summary">${issue.fields.summary}</div>
+            <div class="issue-meta">
+              <span>Priority: ${issue.fields.priority.name}</span>
+              ${issue.fields.parent ? `<span>Parent: ${issue.fields.parent.key}</span>` : ''}
+              ${issue.fields.subtasks && issue.fields.subtasks.length > 0 ? `<span>Subtasks: ${issue.fields.subtasks.length}</span>` : ''}
+            </div>
+            <div class="issue-actions">
+              <button class="secondary" onclick='editIssue(${JSON.stringify(issue).replace(/'/g, "&apos;")})'>✏️ Edit</button>
+              <button class="danger" onclick="deleteIssue('${issue.key}')">🗑️ Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getStatusClass(status) {
+      const statusMap = {
+        'To Do': 'status-todo',
+        'In Progress': 'status-inprogress',
+        'Code Review': 'status-codereview',
+        'Done': 'status-done',
+        'Blocked': 'status-blocked'
+      };
+      return statusMap[status] || 'status-todo';
+    }
+
+    function showCreateIssueModal() {
+      document.getElementById('modalTitle').textContent = 'Create New Issue';
+      document.getElementById('issueForm').reset();
+      document.getElementById('issueKey').value = '';
+      document.getElementById('issueModal').classList.add('active');
+    }
+
+    function editIssue(issue) {
+      document.getElementById('modalTitle').textContent = 'Edit Issue';
+      document.getElementById('issueKey').value = issue.key;
+      document.getElementById('issueSummary').value = issue.fields.summary;
+      document.getElementById('issueType').value = issue.fields.issuetype.name;
+      document.getElementById('issueStatus').value = issue.fields.status.name;
+      document.getElementById('issuePriority').value = issue.fields.priority.name;
+      document.getElementById('issueParent').value = issue.fields.parent?.key || '';
+      document.getElementById('issueModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('issueModal').classList.remove('active');
+    }
+
+    async function saveIssue(event) {
+      event.preventDefault();
+
+      const key = document.getElementById('issueKey').value;
+      const summary = document.getElementById('issueSummary').value;
+      const type = document.getElementById('issueType').value;
+      const status = document.getElementById('issueStatus').value;
+      const priority = document.getElementById('issuePriority').value;
+      const parentKey = document.getElementById('issueParent').value;
+
+      if (key) {
+        // Update existing issue
+        const issue = {
+          key: key,
+          fields: {
+            summary: summary,
+            issuetype: { name: type },
+            status: { name: status },
+            priority: { name: priority },
+            parent: parentKey ? { key: parentKey } : null
+          }
+        };
+
+        try {
+          await fetch(`${API_BASE}/issues/${key}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(issue)
+          });
+          closeModal();
+          loadIssues();
+        } catch (error) {
+          console.error('Failed to update issue:', error);
+          alert('Failed to update issue');
+        }
+      } else {
+        // Create new issue
+        const payload = {
+          fields: {
+            summary: summary,
+            issuetype: { name: type },
+            priority: { name: priority },
+            project: { key: 'TEST' },
+            parent: parentKey ? { key: parentKey } : undefined
+          }
+        };
+
+        try {
+          await fetch(`${JIRA_API_BASE}/issue`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          closeModal();
+          loadIssues();
+        } catch (error) {
+          console.error('Failed to create issue:', error);
+          alert('Failed to create issue');
+        }
+      }
+    }
+
+    async function deleteIssue(key) {
+      if (!confirm(`Delete issue ${key}?`)) return;
+
+      try {
+        await fetch(`${API_BASE}/issues/${key}`, {
+          method: 'DELETE'
+        });
+        loadIssues();
+      } catch (error) {
+        console.error('Failed to delete issue:', error);
+        alert('Failed to delete issue');
+      }
+    }
+
+    async function resetData() {
+      if (!confirm('Reset all data to default? This will delete all custom issues.')) return;
+
+      try {
+        await fetch(`${API_BASE}/reset`, {
+          method: 'POST'
+        });
+        loadIssues();
+      } catch (error) {
+        console.error('Failed to reset data:', error);
+        alert('Failed to reset data');
+      }
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('issueModal').addEventListener('click', (e) => {
+      if (e.target.id === 'issueModal') {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

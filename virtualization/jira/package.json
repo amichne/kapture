@@ -1,20 +1,18 @@
 {
-  "name": "kapture-jira-mock",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Mock Jira server aligned with the virtualization OpenAPI definition.",
-  "main": "src/server.js",
+  "name": "jira-mock-server",
+  "version": "1.0.0",
+  "description": "Simple mock Jira server for Kapture demonstrations",
+  "main": "mock-server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "NODE_ENV=development nodemon src/server.js"
+    "start": "node mock-server.js",
+    "dev": "node --watch mock-server.js"
   },
+  "keywords": ["jira", "mock", "demo"],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "@faker-js/faker": "^8.4.1",
-    "express": "^4.19.2",
-    "openapi-backend": "^5.10.3",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
   }
 }

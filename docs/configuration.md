@@ -59,7 +59,7 @@ binary. This guide highlights the fields that matter most and shows how to adapt
 - `branchPattern` must include a named capture group `task`; Kapture extracts that group to resolve the Jira ticket ID.
 - Use anchors (`^`, `$`) to keep matching fast. Need multiple conventions? Compose them with non-capturing groups:
   `^(?<task>(ENG|OPS)-\d+)\/(feature|fix)\/.*$`.
-- When introducing a new pattern, run `git kapture status` to confirm the compiled regex loads without errors.
+- When introducing a new pattern, run `git status` to confirm the compiled regex loads without errors (check Kapture section).
 
 </details>
 
@@ -165,6 +165,18 @@ Kapture normalises integrations through the `external` block.
 
 </details>
 
+## Configuration precedence
+
+Kapture loads configuration in the following order (first match wins):
+
+1. **Command-line flags**: `-k <path>` or `--konfig <path>` or `--konfig=<path>`
+   ```bash
+   git -k /path/to/custom-config.json commit -m "message"
+   git --konfig=/path/to/config.json status
+   ```
+2. **Environment variable**: `KAPTURE_CONFIG=/path/to/config.json`
+3. **Default location**: `~/.kapture/state/config.json`
+
 ## Environment variables
 
 | Variable          | Purpose                                         |
@@ -187,8 +199,10 @@ Values in the environment always win over file defaults.
 └── logs/              # optional debug output when enabled
 ```
 
-Share configs across teams by checking them into your repo and pointing `KAPTURE_CONFIG` at the committed file in your
-shell profile or CI job definitions.
+Share configs across teams by:
+- Checking them into your repo and using `-k path/to/team-config.json`
+- Setting `KAPTURE_CONFIG` in shell profiles or CI job definitions
+- Creating per-project configs and using command-line flags for different contexts
 
 ## Change management tips
 

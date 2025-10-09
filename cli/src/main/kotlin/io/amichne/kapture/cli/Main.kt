@@ -12,6 +12,8 @@ import io.amichne.kapture.core.util.ConfigLoader
 import io.amichne.kapture.core.util.Environment
 import io.amichne.kapture.interceptors.InterceptorRegistry
 import java.io.File
+import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.system.exitProcess
 
 /**
@@ -20,7 +22,10 @@ import kotlin.system.exitProcess
  * arguments to Git while preserving the user's environment and exit code.
  */
 fun main(rawArgs: Array<String>) {
-    val config = ConfigLoader.load()
+    // Extract config path flags before processing
+    val (configPath, remainingArgs) = extractConfigPath(rawArgs.toList())
+
+    val config = ConfigLoader.load(configPath)
     val realGit = try {
         RealGitResolver.resolve(config.realGitHint)
     } catch (ex: IllegalStateException) {
@@ -30,13 +35,28 @@ fun main(rawArgs: Array<String>) {
 
     val workDir = File(System.getProperty("user.dir"))
     val env = Environment.full()
-    val evaluation = evaluateImmediateRules(rawArgs.toList(), config, env)
+    val evaluation = evaluateImmediateRules(remainingArgs, config, env)
     val args = evaluation.args
 
     ExternalClient.from(config).use { client ->
-        if (args.firstOrNull() == "kapture") {
-            runKaptureCommand(args.drop(1), config, realGit)
+        // Check for custom git commands (subtask, review, merge, work, start)
+        val customCommand = args.firstOrNull()?.lowercase()
+        if (customCommand != null && customCommand in setOf("subtask", "review", "merge", "work", "start")) {
+            runCustomGitCommand(customCommand, args.drop(1), config, workDir, env, client)
             return
+        }
+
+        // Handle status and help specially - append Kapture info to git's output
+        if (customCommand == "status") {
+            val gitExitCode = CommandExecutor.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
+            appendKaptureStatus(config, realGit)
+            exitProcess(gitExitCode)
+        }
+
+        if (customCommand == "help" || customCommand == "--help" || args.contains("--help")) {
+            val gitExitCode = CommandExecutor.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
+            appendKaptureHelp()
+            exitProcess(gitExitCode)
         }
 
         if (evaluation.bypass) {
@@ -73,7 +93,10 @@ fun main(rawArgs: Array<String>) {
  * command that should bypass the interceptor pipeline and be forwarded
  * directly to the real Git executable.
  */
-private fun isBypassCommand(args: List<String>, immediateRules: ImmediateRules): Boolean {
+private fun isBypassCommand(
+    args: List<String>,
+    immediateRules: ImmediateRules
+): Boolean {
     if (args.isEmpty()) return false
     val bypassArgMatch = immediateRules.bypassArgsContains.any { needle ->
         args.any { it.contains(needle) }
@@ -83,63 +106,51 @@ private fun isBypassCommand(args: List<String>, immediateRules: ImmediateRules):
     return immediateRules.bypassCommands.any { it.equals(first, ignoreCase = true) }
 }
 
-private fun runKaptureCommand(
+private fun runCustomGitCommand(
+    command: String,
     args: List<String>,
+    config: Config,
+    workDir: File,
+    env: Map<String, String>,
+    client: ExternalClient<*>
+) {
+    when (command) {
+        "subtask" -> WorkflowCommands.executeSubtask(args, config, workDir, env, client)
+        "start" -> WorkflowCommands.executeStart(args, config, workDir, env, client)
+        "review" -> WorkflowCommands.executeReview(args, config, workDir, env, client)
+        "merge" -> WorkflowCommands.executeMerge(args, config, workDir, env, client)
+        "work" -> WorkflowCommands.executeWork(args, config, workDir, env, client)
+        else -> {
+            System.err.println("Unknown custom git command: $command")
+            exitProcess(1)
+        }
+    }
+}
+
+private fun appendKaptureStatus(
     config: Config,
     realGit: String
 ) {
-    val workDir = File(System.getProperty("user.dir"))
-    val env = Environment.full()
-
-    ExternalClient.from(config).use { client ->
-        when (args.firstOrNull()) {
-            "status" -> {
-                println("Kapture:")
-                println("  real git: $realGit")
-                val externalDescription = when (val ext = config.external) {
-                    is Plugin.Http ->
-                        "REST API (${ext.baseUrl})"
-
-                    is Cli ->
-                        "jira-cli (${ext.executable})"
-                }
-                println("  external integration: $externalDescription")
-                println("  tracking enabled: ${config.trackingEnabled}")
-            }
-
-            "subtask" -> {
-                WorkflowCommands.executeSubtask(args.drop(1), config, client)
-            }
-
-            "branch" -> {
-                WorkflowCommands.executeBranch(args.drop(1), config, workDir, env, client)
-            }
-
-            "review" -> {
-                WorkflowCommands.executeReview(args.drop(1), config, workDir, env, client)
-            }
-
-            "merge" -> {
-                WorkflowCommands.executeMerge(args.drop(1), config, workDir, env, client)
-            }
-
-            "help", null -> {
-                println("Available kapture commands:")
-                println("  status     Show resolved git binary and configuration summary")
-                println("")
-                println("Workflow automation:")
-                println("  subtask    Create a subtask under a parent story")
-                println("  branch     Create a branch and transition subtask to In Progress")
-                println("  review     Create a pull request and transition to Code Review")
-                println("  merge      Merge PR and transition subtask to Closed")
-            }
-
-            else -> {
-                System.err.println("Unknown kapture command: ${args.first()}\nTry 'git kapture help'.")
-                exitProcess(1)
-            }
-        }
+    println()
+    println("Kapture:")
+    println("  real git: $realGit")
+    val externalDescription = when (val ext = config.external) {
+        is Plugin.Http -> "REST API (${ext.baseUrl})"
+        is Cli -> "jira-cli (${ext.executable})"
     }
+    println("  external integration: $externalDescription")
+    println("  tracking enabled: ${config.trackingEnabled}")
+}
+
+private fun appendKaptureHelp() {
+    println()
+    println("Kapture workflow commands:")
+    println("  git subtask <PARENT> <title>    Create a subtask and transition to In Progress")
+    println("  git subtask <SUBTASK-ID>        Transition subtask to In Progress")
+    println("  git start <TASK-ID>             Create a branch and transition task to In Progress")
+    println("  git review [<title>]            Create PR and transition to Code Review")
+    println("  git merge [<id>] [--close-parent]  Merge PR and close subtask")
+    println("  git work                        Show work log and activity")
 }
 
 internal fun evaluateImmediateRules(
@@ -180,3 +191,50 @@ internal data class ImmediateRulesEvaluation(
     val bypass: Boolean,
     val optedOut: Boolean
 )
+
+/**
+ * Extracts the config path from -k or --konfig flags and returns it along with
+ * the remaining arguments with these flags removed.
+ */
+private fun extractConfigPath(args: List<String>): Pair<Path?, List<String>> =
+//    val remaining = mutableListOf<String>()
+//    var configPath: Path? = null
+//    var i = 0
+    (args.indexOf("-k").takeUnless { it == -1 } ?: args.indexOf("--konfig").takeUnless { it == -1 })?.let { index ->
+//        args.slice(index..index + 1)
+//            .also { consumed -> with(args) { minus(args.slice(index..index + 1)) } }
+        Paths.get(args[index + 1]) to with(args) { minus(args.slice(index..index + 1)) }
+    } ?: (null to args)
+
+//    while (i < args.size) {
+//        val arg = args[i]
+//        when {
+//            arg == "-k" || arg == "--konfig" -> {
+//                // Next argument is the path
+//                if (i + 1 < args.size) {
+//                    configPath = Paths.get(args[i + 1])
+//                    i += 2 // Skip both the flag and the value
+//                } else {
+//                    System.err.println("[kapture] ERROR: $arg requires a path argument")
+//                    exitProcess(1)
+//                }
+//            }
+//
+//            arg.startsWith("--konfig=") -> {
+//                configPath = Paths.get(arg.substring(9))
+//                i++
+//            }
+//
+//            arg.startsWith("-k=") -> {
+//                configPath = Paths.get(arg.substring(3))
+//                i++
+//            }
+//
+//            else -> {
+//                remaining.add(arg)
+//                i++
+//            }
+//        }
+//    }
+
+//    return configPath to remaining

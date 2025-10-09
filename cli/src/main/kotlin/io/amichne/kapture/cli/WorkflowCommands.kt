@@ -25,32 +25,97 @@ object WorkflowCommands {
     fun executeSubtask(
         args: List<String>,
         config: Config,
+        workDir: File,
+        env: Map<String, String>,
         client: ExternalClient<*>
     ) {
         if (args.isEmpty()) {
-            System.err.println("Usage: git kapture subtask <PARENT-ID> [subtask-title]")
+            System.err.println("Usage:")
+            System.err.println("  git subtask <PARENT-ID> <subtask-title>  # Create a subtask under parent")
+            System.err.println("  git subtask <SUBTASK-ID>                 # Transition subtask to In Progress")
             exitProcess(1)
         }
 
-        val parentId = args[0]
-        val title = args.drop(1).joinToString(" ").ifBlank { null }
+        val firstArg = args[0]
+        val hasTitle = args.size > 1
 
-        println("Creating subtask under parent ${parentId}...")
+        if (hasTitle) {
+            // Mode 1: Create new subtask under parent
+            val parentId = firstArg
+            val title = args.drop(1).joinToString(" ")
 
-        when (val result = client.adapter.createSubtask(parentId, title)) {
-            is SubtaskCreationResult.Success -> {
-                println("✓ Created subtask: ${result.subtaskKey}")
-                println("  Parent: ${parentId}")
+            println("Creating subtask under parent ${parentId}...")
+
+            when (val result = client.adapter.createSubtask(parentId, title)) {
+                is SubtaskCreationResult.Success -> {
+                    val subtaskKey = result.subtaskKey
+                    println("✓ Created subtask: ${subtaskKey}")
+                    println("  Parent: ${parentId}")
+
+                    // Transition the new subtask to In Progress
+                    println("Transitioning ${subtaskKey} to 'In Progress'...")
+                    when (val transitionResult = client.adapter.transitionTask(subtaskKey, "In Progress")) {
+                        is TaskTransitionResult.Success -> {
+                            println("✓ Subtask ${subtaskKey} → In Progress")
+                        }
+
+                        is TaskTransitionResult.Failure -> {
+                            System.err.println("⚠ Subtask created but failed to transition: ${transitionResult.message}")
+                        }
+                    }
+                }
+
+                is SubtaskCreationResult.Failure -> {
+                    System.err.println("✗ Failed to create subtask: ${result.message}")
+                    exitProcess(1)
+                }
+            }
+        } else {
+            // Mode 2: Transition existing subtask to In Progress
+            val subtaskId = firstArg
+
+            // Validate subtask exists
+            val statusResult = client.getTaskStatus(subtaskId)
+            when (statusResult) {
+                is TaskSearchResult.Found -> {
+                    val normalizedStatus = statusResult.normalizedStatus()
+                    val internalStatus = statusResult.status.internal
+                    val isAlreadyInProgress = internalStatus == InternalStatus.IN_PROGRESS ||
+                                              normalizedStatus.contains("IN_PROGRESS")
+
+                    if (isAlreadyInProgress) {
+                        println("✓ Subtask ${subtaskId} is already in 'In Progress'")
+                        return
+                    }
+                }
+
+                TaskSearchResult.NotFound -> {
+                    System.err.println("✗ Subtask ${subtaskId} not found")
+                    exitProcess(1)
+                }
+
+                is TaskSearchResult.Error -> {
+                    System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
+                    exitProcess(1)
+                }
             }
 
-            is SubtaskCreationResult.Failure -> {
-                System.err.println("✗ Failed to create subtask: ${result.message}")
-                exitProcess(1)
+            // Transition subtask to In Progress
+            println("Transitioning ${subtaskId} to 'In Progress'...")
+            when (val transitionResult = client.adapter.transitionTask(subtaskId, "In Progress")) {
+                is TaskTransitionResult.Success -> {
+                    println("✓ Subtask ${subtaskId} → In Progress")
+                }
+
+                is TaskTransitionResult.Failure -> {
+                    System.err.println("✗ Failed to transition subtask: ${transitionResult.message}")
+                    exitProcess(1)
+                }
             }
         }
     }
 
-    fun executeBranch(
+    fun executeStart(
         args: List<String>,
         config: Config,
         workDir: File,
@@ -58,15 +123,20 @@ object WorkflowCommands {
         client: ExternalClient<*>
     ) {
         if (args.isEmpty()) {
-            System.err.println("Usage: git kapture branch <SUBTASK-ID>")
+            System.err.println("Usage: git start <TASK-ID> [--branch/-B <branch-name>]")
             exitProcess(1)
         }
 
-        val subtaskId = args[0]
+        // Parse arguments
+        val taskId = args[0]
+        val branchFlagIndex = args.indexOfFirst { it == "--branch" || it == "-B" }
+        val customBranchName = if (branchFlagIndex >= 0 && branchFlagIndex + 1 < args.size) {
+            args[branchFlagIndex + 1]
+        } else null
 
-        // Validate subtask exists and get current status
-        val statusResult = client.getTaskStatus(subtaskId)
-        when (statusResult) {
+        // Validate task exists and get current status
+        val statusResult = client.getTaskStatus(taskId)
+        val taskDetails = when (statusResult) {
             is TaskSearchResult.Found -> {
                 val normalizedStatus = statusResult.normalizedStatus()
                 val internalAllowed = statusResult.status.internal?.let {
@@ -74,25 +144,36 @@ object WorkflowCommands {
                 } == true
                 val legacyAllowed = normalizedStatus.contains("READY") || normalizedStatus.contains("IN_PROGRESS")
                 if (!internalAllowed && !legacyAllowed) {
-                    System.err.println("✗ Subtask ${subtaskId} must be in 'Ready for Dev' status")
+                    System.err.println("✗ Task ${taskId} must be in 'Ready for Dev' status")
                     System.err.println("  Current status: ${statusResult.displayStatus()}")
                     exitProcess(1)
                 }
+                // Fetch task details for branch naming
+                client.adapter.getTaskDetails(taskId)
             }
 
             TaskSearchResult.NotFound -> {
-                System.err.println("✗ Subtask ${subtaskId} not found")
+                System.err.println("✗ Task ${taskId} not found")
                 exitProcess(1)
             }
 
             is TaskSearchResult.Error -> {
-                System.err.println("✗ Failed to check subtask status: ${statusResult.message}")
+                System.err.println("✗ Failed to check task status: ${statusResult.message}")
                 exitProcess(1)
             }
         }
 
-        // Generate branch name from pattern and task
-        val branchName = generateBranchName(subtaskId, config)
+        // Determine branch name
+        val branchName = customBranchName ?: when (taskDetails) {
+            is TaskDetailsResult.Success -> {
+                // Generate branch name from task title
+                generateBranchNameFromTitle(taskId, taskDetails.summary, config)
+            }
+            is TaskDetailsResult.Failure -> {
+                // Fall back to simple task ID-based name
+                generateBranchName(taskId, config)
+            }
+        }
 
         println("Creating branch: ${branchName}")
         val createBranchResult = CommandExecutor.capture(
@@ -106,16 +187,16 @@ object WorkflowCommands {
             exitProcess(createBranchResult.exitCode)
         }
 
-        // Transition subtask to "In Progress"
-        println("Transitioning ${subtaskId} to 'In Progress'...")
-        when (val transitionResult = client.adapter.transitionTask(subtaskId, "In Progress")) {
+        // Transition task to "In Progress"
+        println("Transitioning ${taskId} to 'In Progress'...")
+        when (val transitionResult = client.adapter.transitionTask(taskId, "In Progress")) {
             is TaskTransitionResult.Success -> {
                 println("✓ Branch created: ${branchName}")
-                println("✓ Subtask ${subtaskId} → In Progress")
+                println("✓ Task ${taskId} → In Progress")
             }
 
             is TaskTransitionResult.Failure -> {
-                System.err.println("⚠ Branch created but failed to transition subtask: ${transitionResult.message}")
+                System.err.println("⚠ Branch created but failed to transition task: ${transitionResult.message}")
                 exitProcess(1)
             }
         }
@@ -128,6 +209,9 @@ object WorkflowCommands {
         env: Map<String, String>,
         client: ExternalClient<*>
     ) {
+        // Optional title parameter
+        val customTitle = args.joinToString(" ").ifBlank { null }
+
         // Get current branch and extract task
         val currentBranchResult = CommandExecutor.capture(
             cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
@@ -179,12 +263,14 @@ object WorkflowCommands {
         val taskDetails = client.adapter.getTaskDetails(subtaskId)
         val (title, body) = when (taskDetails) {
             is TaskDetailsResult.Success -> {
-                Pair(taskDetails.summary, buildPullRequestBody(taskDetails, client))
+                val prTitle = customTitle ?: taskDetails.summary
+                Pair(prTitle, buildPullRequestBody(taskDetails, client))
             }
 
             is TaskDetailsResult.Failure -> {
                 System.err.println("⚠ Could not fetch task details: ${taskDetails.message}")
-                Pair(subtaskId, "")
+                val prTitle = customTitle ?: subtaskId
+                Pair(prTitle, "")
             }
         }
 
@@ -243,24 +329,35 @@ object WorkflowCommands {
         env: Map<String, String>,
         client: ExternalClient<*>
     ) {
-        // Get current branch and extract task
-        val currentBranchResult = CommandExecutor.capture(
-            cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
-            workDir = workDir,
-            env = env
-        )
+        // Parse arguments
+        val nonFlagArgs = args.filter { !it.startsWith("--") }
+        val closeParent = args.any { it.startsWith("--close-parent") && (it == "--close-parent" || it.contains("=true")) }
 
-        if (currentBranchResult.exitCode != 0) {
-            System.err.println("✗ Failed to get current branch")
-            exitProcess(currentBranchResult.exitCode)
-        }
+        // Determine subtask ID - either from args or from current branch
+        val subtaskId = if (nonFlagArgs.isNotEmpty()) {
+            nonFlagArgs[0]
+        } else {
+            // Get current branch and extract task
+            val currentBranchResult = CommandExecutor.capture(
+                cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
+                workDir = workDir,
+                env = env
+            )
 
-        val currentBranch = currentBranchResult.stdout.trim()
-        val subtaskId = BranchUtils.extractTask(currentBranch, config.branchPattern)
+            if (currentBranchResult.exitCode != 0) {
+                System.err.println("✗ Failed to get current branch")
+                exitProcess(currentBranchResult.exitCode)
+            }
 
-        if (subtaskId.isNullOrBlank()) {
-            System.err.println("✗ Current branch '${currentBranch}' does not contain a valid task ID")
-            exitProcess(1)
+            val currentBranch = currentBranchResult.stdout.trim()
+            val extracted = BranchUtils.extractTask(currentBranch, config.branchPattern)
+
+            if (extracted.isNullOrBlank()) {
+                System.err.println("✗ Current branch '${currentBranch}' does not contain a valid task ID")
+                System.err.println("Usage: git merge [<subtask-id>] [--close-parent]")
+                exitProcess(1)
+            }
+            extracted
         }
 
         // Validate subtask is in "Code Review" status
@@ -308,6 +405,33 @@ object WorkflowCommands {
             is TaskTransitionResult.Success -> {
                 println("✓ Pull request merged")
                 println("✓ Subtask ${subtaskId} → Closed")
+
+                // Check if we should close the parent
+                if (closeParent) {
+                    val taskDetails = client.adapter.getTaskDetails(subtaskId)
+                    when (taskDetails) {
+                        is TaskDetailsResult.Success -> {
+                            taskDetails.parentKey?.let { parentKey ->
+                                println("\nChecking parent story ${parentKey}...")
+                                // TODO: Check if parent has other open subtasks
+                                // For now, we'll just transition it
+                                when (val parentTransition = client.adapter.transitionTask(parentKey, "Done")) {
+                                    is TaskTransitionResult.Success -> {
+                                        println("✓ Parent story ${parentKey} → Closed")
+                                    }
+                                    is TaskTransitionResult.Failure -> {
+                                        System.err.println("⚠ Failed to close parent story: ${parentTransition.message}")
+                                    }
+                                }
+                            } ?: run {
+                                System.err.println("⚠ No parent story found for ${subtaskId}")
+                            }
+                        }
+                        is TaskDetailsResult.Failure -> {
+                            System.err.println("⚠ Could not fetch task details to close parent: ${taskDetails.message}")
+                        }
+                    }
+                }
             }
 
             is TaskTransitionResult.Failure -> {
@@ -320,9 +444,28 @@ object WorkflowCommands {
         taskId: String,
         config: Config
     ): String {
-        // Extract pattern format and generate branch name
-        // For now, use a simple format: TASK-ID/description
+        // Simple fallback when task details not available
         return "${taskId}/dev"
+    }
+
+    private fun generateBranchNameFromTitle(
+        taskId: String,
+        title: String,
+        config: Config
+    ): String {
+        // Normalize title to branch-safe format
+        // TODO: Make this configurable via config.branchNameNormalizer
+        val normalized = title
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+            .take(50) // Limit length
+
+        return if (normalized.isNotEmpty()) {
+            "${taskId}/${normalized}"
+        } else {
+            "${taskId}/dev"
+        }
     }
 
     private fun buildPullRequestBody(
@@ -373,6 +516,108 @@ object WorkflowCommands {
         // For now, return empty list as this requires more complex JQL queries
         Environment.debug { "Finding related PRs for parent ${parentKey}, excluding ${currentKey}" }
         return emptyList()
+    }
+
+    fun executeWork(
+        args: List<String>,
+        config: Config,
+        workDir: File,
+        env: Map<String, String>,
+        client: ExternalClient<*>
+    ) {
+        // Get current branch and extract task
+        val currentBranchResult = CommandExecutor.capture(
+            cmd = listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
+            workDir = workDir,
+            env = env
+        )
+
+        if (currentBranchResult.exitCode != 0) {
+            System.err.println("✗ Failed to get current branch")
+            exitProcess(currentBranchResult.exitCode)
+        }
+
+        val currentBranch = currentBranchResult.stdout.trim()
+        val subtaskId = BranchUtils.extractTask(currentBranch, config.branchPattern)
+
+        if (subtaskId.isNullOrBlank()) {
+            System.err.println("✗ Current branch '${currentBranch}' does not contain a valid task ID")
+            System.err.println("  Expected pattern: ${config.branchPattern}")
+            exitProcess(1)
+        }
+
+        // Get task status
+        val statusResult = client.getTaskStatus(subtaskId)
+        val statusDisplay = when (statusResult) {
+            is TaskSearchResult.Found -> statusResult.displayStatus()
+            else -> "Unknown"
+        }
+
+        // Get task details
+        val taskDetails = client.adapter.getTaskDetails(subtaskId)
+        when (taskDetails) {
+            is TaskDetailsResult.Success -> {
+                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                println("Work Log for ${taskDetails.key}")
+                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                println("\nTask: ${taskDetails.summary}")
+                println("Status: ${statusDisplay}")
+                taskDetails.parentKey?.let { println("Parent: ${it}") }
+                println()
+
+                // Show recent commits
+                println("Recent Commits:")
+                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                val logResult = CommandExecutor.capture(
+                    cmd = listOf("git", "log", "--oneline", "-10"),
+                    workDir = workDir,
+                    env = env
+                )
+
+                if (logResult.exitCode == 0 && logResult.stdout.isNotBlank()) {
+                    println(logResult.stdout)
+                } else {
+                    println("No commits found")
+                }
+
+                // Show current branch status
+                println("\nBranch Status:")
+                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                val statusResult = CommandExecutor.capture(
+                    cmd = listOf("git", "status", "--short"),
+                    workDir = workDir,
+                    env = env
+                )
+
+                if (statusResult.exitCode == 0) {
+                    if (statusResult.stdout.isNotBlank()) {
+                        println(statusResult.stdout)
+                    } else {
+                        println("Working directory clean")
+                    }
+                }
+
+                // Check for associated PR
+                println("\nPull Request:")
+                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                val prResult = CommandExecutor.capture(
+                    cmd = listOf("gh", "pr", "view", "--json", "url,state,title"),
+                    workDir = workDir,
+                    env = env
+                )
+
+                if (prResult.exitCode == 0 && prResult.stdout.isNotBlank()) {
+                    println(prResult.stdout)
+                } else {
+                    println("No pull request found for this branch")
+                }
+            }
+
+            is TaskDetailsResult.Failure -> {
+                System.err.println("✗ Failed to fetch task details: ${taskDetails.message}")
+                exitProcess(1)
+            }
+        }
     }
 
     private fun TaskSearchResult.Found.displayStatus(): String =

@@ -1,0 +1,42 @@
+{
+  "externalBaseUrl": "http://localhost:8080",
+  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+  "enforcement": {
+    "branchPolicy": "WARN",
+    "statusCheck": "WARN"
+  },
+  "statusRules": {
+    "allowCommitWhen": ["TODO", "IN_PROGRESS"],
+    "allowPushWhen": ["REVIEW", "DONE"]
+  },
+  "ticketMapping": {
+    "default": "TODO",
+    "providers": [
+      {
+        "provider": "jira",
+        "rules": [
+          { "to": "IN_PROGRESS", "match": ["In Progress"] },
+          { "to": "REVIEW", "match": ["Code Review"] },
+          { "to": "BLOCKED", "match": ["Blocked"] },
+          { "to": "DONE", "match": ["Done"] }
+        ]
+      }
+    ]
+  },
+  "immediateRules": {
+    "enabled": true,
+    "optOutFlags": ["-nk", "--no-kapture"],
+    "optOutEnvVars": ["KAPTURE_OPTOUT"],
+    "bypassCommands": ["help", "--version", "--exec-path"],
+    "bypassArgsContains": ["--list-cmds"]
+  },
+  "external": {
+    "type": "rest",
+    "baseUrl": "http://localhost:8080",
+    "auth": {
+      "type": "bearer",
+      "token": "mock-token-not-required"
+    }
+  },
+  "trackingEnabled": false
+}

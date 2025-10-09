@@ -1,15 +1,25 @@
-# syntax=docker/dockerfile:1.6
+FROM node:20-alpine
 
-FROM node:20-alpine AS base
+# Set working directory
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --production
+# Copy package files
+COPY package*.json ./
 
-COPY src ./src
-COPY openapi.json ./openapi.json
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application files
+COPY mock-server.js ./
 COPY resources ./resources
+COPY public ./public
 
-ENV NODE_ENV=production
+# Expose port
 EXPOSE 8080
-CMD ["node", "src/server.js"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/rest/api/3/myself', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Run the server
+CMD ["node", "mock-server.js"]

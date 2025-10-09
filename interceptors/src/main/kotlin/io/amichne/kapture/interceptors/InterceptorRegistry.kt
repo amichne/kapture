@@ -6,6 +6,7 @@ object InterceptorRegistry {
     val interceptors: List<GitInterceptor> = listOf(
         BranchPolicyInterceptor(),
         StatusGateInterceptor(),
+        CommitMessageInterceptor(),
         SessionTrackingInterceptor()
     )
 }

@@ -8,8 +8,7 @@ system.
 
 - `core` owns shared primitives: configuration loading, process execution, logging, and the external client facade.
 - `interceptors` contribute policy hooks that run before/after Git executes.
-- `cli` wires everything together, resolves the real Git binary, and is the only module that produces runnable artefacts.
-- `virtualization/jira` contains the JSON-backed Jira mock used in integration tests and local smoke runs.
+- `cli` wires everything together, resolves the real Git binary, routes custom git commands, and produces runnable artefacts.
 
 ## System map
 
@@ -29,6 +28,7 @@ flowchart TD
     subgraph Interceptors
         Branch[BranchPolicy]
         Status[StatusGate]
+        Commit[CommitMessage]
         Session[SessionTracking]
     end
 
@@ -36,9 +36,11 @@ flowchart TD
     Entry --> Registry
     Registry --> Branch
     Registry --> Status
+    Registry --> Commit
     Registry --> Session
     Branch --> Exec
     Status --> Exec
+    Commit --> Exec
     Session --> Exec
     Exec -->|git| RealGit[(Real git)]
     Status --> External
@@ -67,7 +69,8 @@ order; the core module supplies the runtime services they rely on.
 - Define the `GitInterceptor` contract (`before`/`after` hooks).
 - Ship built-in implementations:
   - `BranchPolicyInterceptor` – validates branch names against the configured regex.
-  - `StatusGateInterceptor` – checks ticket state before critical commands.
+  - `StatusGateInterceptor` – checks ticket state before critical commands (commit, push).
+  - `CommitMessageInterceptor` – automatically prepends ticket key to commit messages.
   - `SessionTrackingInterceptor` – emits activity snapshots when enabled.
 - Register interceptors in processing order via `InterceptorRegistry.interceptors`.
 
@@ -76,9 +79,12 @@ order; the core module supplies the runtime services they rely on.
 <details>
 <summary><code>cli</code></summary>
 
-- Parses the incoming Git invocation and decides whether to call a built-in subcommand (`git kapture …`) or forward to
-  the interceptor loop.
+- Parses the incoming Git invocation and routes commands:
+  - Custom git commands (`git subtask`, `git start`, `git review`, `git merge`, `git work`) execute directly.
+  - Git status and help commands run normally, then Kapture appends its own info to the output.
+  - Standard git commands forward through the interceptor pipeline.
 - Applies fast paths for read-only commands (e.g. `--version`, completions) to keep Git UX snappy.
+- Contains `WorkflowCommands` for Jira workflow automation (subtask creation, PR management, etc.).
 - Exposes build artefacts: Kotlin/JVM application, GraalVM native image, and Docker entrypoints.
 
 </details>
@@ -90,14 +96,16 @@ order; the core module supplies the runtime services they rely on.
 3. `RealGitResolver` searches `REAL_GIT`, config hints, and `PATH`, stopping once it finds a binary that is not the
    wrapper itself.
 4. The CLI decides which path to take:
-   - built-in commands (`git kapture status`, `--list-cmds`) run immediately;
-   - completion helpers and other read-only Git commands bypass interceptors;
-   - everything else becomes an `Invocation` that flows through the interceptor pipeline.
-5. Each interceptor’s `before` hook runs in order and may short-circuit by returning a non-null exit code.
+   - **Custom git commands** (`git subtask`, `git start`, `git review`, `git merge`, `git work`) route to `WorkflowCommands` immediately;
+   - **Status/help commands** (`git status`, `git help`) run git first, then append Kapture info;
+   - **Read-only Git commands** (completions, `--version`, `--list-cmds`) bypass interceptors;
+   - **Everything else** becomes a `CommandInvocation` that flows through the interceptor pipeline.
+5. Each interceptor's `before` hook runs in order and may short-circuit by returning a non-null exit code.
+   - Example: `CommitMessageInterceptor` modifies the commit message and executes git directly, preventing duplicate commits.
 6. If execution proceeds, `CommandExecutor.passthrough` spawns the real Git process with untouched environment and
    working directory.
 7. After Git exits, `after` hooks run in the same order (session tracking, post-run messaging, …).
-8. The CLI returns Git’s exit code to the caller.
+8. The CLI returns Git's exit code to the caller.
 
 ## External integrations
 
@@ -128,11 +136,28 @@ Relevant Gradle tasks:
 
 ## Extending the pipeline
 
-1. Implement `GitInterceptor`, returning a non-null exit code from `before` when you need to block execution.
-2. Register your interceptor inside `InterceptorRegistry.interceptors`, paying attention to ordering.
-3. Document any new configuration keys in [`docs/configuration.md`](configuration.md) and add tests under the relevant
-   module.
-4. Keep shared utilities in `core` so other interceptors can reuse them without creating new dependencies.
+### Adding new interceptors
 
-Use the [`scripts/integration-test.sh`](../scripts/integration-test.sh) suite to validate behaviour across Docker and
-native executions after introducing new hooks.
+1. Implement `GitInterceptor` in the `interceptors` module:
+   - Return a non-null exit code from `before` to block the original Git command.
+   - Use `CommandInvocation.passthroughGit()` or `captureGit()` to execute modified commands.
+2. Register your interceptor inside `InterceptorRegistry.interceptors`, paying attention to ordering:
+   - Policy checks (branch, status) run first.
+   - Command modifiers (commit message) run before execution.
+   - Tracking/telemetry runs last.
+3. Document any new configuration keys in [`docs/configuration.md`](configuration.md).
+4. Add tests under `interceptors/src/test/kotlin`.
+
+### Adding new workflow commands
+
+1. Add command handler in `WorkflowCommands.kt` (in `cli` module).
+2. Register the command in `Main.kt` custom command routing:
+   ```kotlin
+   if (customCommand in setOf("subtask", "start", "review", "merge", "work", "yourcmd")) {
+       runCustomGitCommand(customCommand, ...)
+   }
+   ```
+3. Update `runCustomGitCommand` when-expression to route to your handler.
+4. Document the command in [`docs/workflow-automation.md`](workflow-automation.md).
+
+Keep shared utilities in `core` so other interceptors and commands can reuse them without creating new dependencies.
