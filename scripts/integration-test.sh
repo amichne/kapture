@@ -188,7 +188,7 @@ mkdir -p "$(dirname "$CONFIG_FILE")"
 cat > "$CONFIG_FILE" <<'EOF'
 {
   "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
-  "externalBaseUrl": "http://localhost:8080",
+
   "enforcement": {
     "branchPolicy": "WARN",
     "statusCheck": "OFF"

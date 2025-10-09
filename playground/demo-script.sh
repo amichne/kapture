@@ -90,7 +90,7 @@ write_config() {
   mkdir -p "$config_dir"
   cat <<CFG > "$config_dir/config.json"
 {
-  "externalBaseUrl": "${JIRA_SERVER:-http://jira:8080}",
+
   "branchPattern": "^(?<task>[A-Z]+-\\\\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "WARN",

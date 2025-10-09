@@ -5,17 +5,22 @@ binary. This guide highlights the fields that matter most and shows how to adapt
 
 ## Minimal template
 
-```jsonc
-{
-  "externalBaseUrl": "https://jira.example.com",
+```json
+{ 
   "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "WARN",
     "statusCheck": "OFF"
   },
   "statusRules": {
-    "allowCommitWhen": ["TODO", "IN_PROGRESS"],
-    "allowPushWhen": ["REVIEW", "DONE"]
+    "allowCommitWhen": [
+      "TODO",
+      "IN_PROGRESS"
+    ],
+    "allowPushWhen": [
+      "REVIEW",
+      "DONE"
+    ]
   },
   "ticketMapping": {
     "default": "TODO",
@@ -23,27 +28,61 @@ binary. This guide highlights the fields that matter most and shows how to adapt
       {
         "provider": "jira",
         "rules": [
-          { "to": "IN_PROGRESS", "match": ["In Progress", "Implementing"] },
-          { "to": "REVIEW",      "match": ["In Review"] },
-          { "to": "BLOCKED",     "match": ["Blocked"] },
-          { "to": "DONE",        "match": ["Done", "Resolved"] }
+          {
+            "to": "IN_PROGRESS",
+            "match": [
+              "In Progress",
+              "Implementing"
+            ]
+          },
+          {
+            "to": "REVIEW",
+            "match": [
+              "In Review"
+            ]
+          },
+          {
+            "to": "BLOCKED",
+            "match": [
+              "Blocked"
+            ]
+          },
+          {
+            "to": "DONE",
+            "match": [
+              "Done",
+              "Resolved"
+            ]
+          }
         ]
       }
     ]
   },
   "immediateRules": {
     "enabled": true,
-    "optOutFlags": ["-nk", "--no-kapture"],
-    "optOutEnvVars": ["KAPTURE_OPTOUT"],
-    "bypassCommands": ["help", "--version", "--exec-path"],
-    "bypassArgsContains": ["--list-cmds"]
+    "optOutFlags": [
+      "-nk",
+      "--no-kapture"
+    ],
+    "optOutEnvVars": [
+      "KAPTURE_OPTOUT"
+    ],
+    "bypassCommands": [
+      "help",
+      "--version",
+      "--exec-path"
+    ],
+    "bypassArgsContains": [
+      "--list-cmds"
+    ]
   },
   "plugins": {
-  "jira": {
-    "type": "jiraCli",
-    "environment": {
-      "JIRA_USER_EMAIL": "dev@example.com",
-      "JIRA_API_TOKEN": "<token>"
+    "jira": {
+      "type": "jiraCli",
+      "environment": {
+        "JIRA_USER_EMAIL": "dev@example.com",
+        "JIRA_API_TOKEN": "<token>"
+      }
     }
   },
   "trackingEnabled": false
@@ -60,17 +99,18 @@ binary. This guide highlights the fields that matter most and shows how to adapt
 - `branchPattern` must include a named capture group `task`; Kapture extracts that group to resolve the Jira ticket ID.
 - Use anchors (`^`, `$`) to keep matching fast. Need multiple conventions? Compose them with non-capturing groups:
   `^(?<task>(ENG|OPS)-\d+)\/(feature|fix)\/.*$`.
-- When introducing a new pattern, run `git status` to confirm the compiled regex loads without errors (check Kapture section).
+- When introducing a new pattern, run `git status` to confirm the compiled regex loads without errors (check Kapture
+  section).
 
 </details>
 
 <details>
 <summary>Enforcement modes</summary>
 
-| Mode  | Behaviour                                           |
-|-------|------------------------------------------------------|
-| `OFF` | Skip the interceptor entirely.                       |
-| `WARN`| Print diagnostics but allow the Git command to run.  |
+| Mode    | Behaviour                                                    |
+|---------|--------------------------------------------------------------|
+| `OFF`   | Skip the interceptor entirely.                               |
+| `WARN`  | Print diagnostics but allow the Git command to run.          |
 | `BLOCK` | Abort the Git command immediately with a non-zero exit code. |
 
 Configure branch policy and status checks independently via `enforcement.branchPolicy` and `enforcement.statusCheck`.
@@ -80,7 +120,8 @@ Configure branch policy and status checks independently via `enforcement.branchP
 <details>
 <summary>Status gates</summary>
 
-- `statusRules.allowCommitWhen` and `statusRules.allowPushWhen` accept internal status names (e.g. `TODO`, `IN_PROGRESS`).
+- `statusRules.allowCommitWhen` and `statusRules.allowPushWhen` accept internal status names (e.g. `TODO`,
+  `IN_PROGRESS`).
 - Feed them the values produced by your `ticketMapping`; comparisons are case-sensitive.
 - Leave a list empty to block the action outright, or omit `statusRules` entirely to fall back to built-in defaults.
 
@@ -116,7 +157,8 @@ Configure branch policy and status checks independently via `enforcement.branchP
 <summary>Immediate rules</summary>
 
 - Control how the shim behaves for normal git verbs (checkout, commit, push, ...).
-- `enabled` toggles the entire interceptor pipeline. Opt-out flags/env-vars skip enforcement but still forward the command to Git.
+- `enabled` toggles the entire interceptor pipeline. Opt-out flags/env-vars skip enforcement but still forward the
+  command to Git.
 - `bypassCommands` / `bypassArgsContains` keep help/completion/version flows fast by skipping the interceptors entirely.
 
 ```jsonc
@@ -181,14 +223,14 @@ Kapture loads configuration in the following order (first match wins):
 
 ## Environment variables
 
-| Variable          | Purpose                                         |
-|-------------------|-------------------------------------------------|
-| `KAPTURE_CONFIG`  | Absolute path to the config file.               |
-| `KAPTURE_DEBUG`   | When truthy, prints verbose diagnostics to stderr. |
+| Variable          | Purpose                                                     |
+|-------------------|-------------------------------------------------------------|
+| `KAPTURE_CONFIG`  | Absolute path to the config file.                           |
+| `KAPTURE_DEBUG`   | When truthy, prints verbose diagnostics to stderr.          |
 | `REAL_GIT`        | Explicit path to the real Git binary (overrides discovery). |
-| `JIRA_USER_EMAIL` | Default Jira username/email when using `jiraCli`. |
-| `JIRA_API_TOKEN`  | Authentication token for Jira integrations.     |
-| `KAPTURE_OPTOUT`  | When set, skip all interceptors (useful in CI jobs). |
+| `JIRA_USER_EMAIL` | Default Jira username/email when using `jiraCli`.           |
+| `JIRA_API_TOKEN`  | Authentication token for Jira integrations.                 |
+| `KAPTURE_OPTOUT`  | When set, skip all interceptors (useful in CI jobs).        |
 
 Values in the environment always win over file defaults.
 
@@ -202,6 +244,7 @@ Values in the environment always win over file defaults.
 ```
 
 Share configs across teams by:
+
 - Checking them into your repo and using `-k path/to/team-config.json`
 - Setting `KAPTURE_CONFIG` in shell profiles or CI job definitions
 - Creating per-project configs and using command-line flags for different contexts

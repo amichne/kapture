@@ -72,7 +72,7 @@ Explore the full lifecycle (including status transitions, sample outputs, and fa
 
 ```json
 {
-  "externalBaseUrl": "https://jira.example.com",
+
   "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "WARN",

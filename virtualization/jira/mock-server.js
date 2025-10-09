@@ -317,7 +317,7 @@ app.listen(PORT, () => {
   console.log(`\nAPI Base URL: http://localhost:${PORT}/rest/api/3`);
   console.log('\nExample Kapture config:');
   console.log(`{
-  "externalBaseUrl": "http://localhost:${PORT}",
+
   "external": {
     "type": "rest",
     "baseUrl": "http://localhost:${PORT}",

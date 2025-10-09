@@ -73,7 +73,7 @@ Update your Kapture config to point to the mock server:
 
 ```json
 {
-  "externalBaseUrl": "http://localhost:8080",
+
   "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "WARN",
