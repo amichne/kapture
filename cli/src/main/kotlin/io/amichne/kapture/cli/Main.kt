@@ -4,7 +4,6 @@ import io.amichne.kapture.core.ExternalClient
 import io.amichne.kapture.core.command.CommandExecutor
 import io.amichne.kapture.core.git.RealGitResolver
 import io.amichne.kapture.core.model.command.CommandInvocation
-import io.amichne.kapture.core.model.config.Cli
 import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.config.ImmediateRules
 import io.amichne.kapture.core.model.config.Plugin
@@ -21,6 +20,8 @@ import kotlin.system.exitProcess
  * real Git binary, runs each interceptor, and finally delegates the original
  * arguments to Git while preserving the user's environment and exit code.
  */
+private const val DEFAULT_PLUGIN_KEY = "jira"
+
 fun main(rawArgs: Array<String>) {
     // Extract config path flags before processing
     val (configPath, remainingArgs) = extractConfigPath(rawArgs.toList())
@@ -38,7 +39,13 @@ fun main(rawArgs: Array<String>) {
     val evaluation = evaluateImmediateRules(remainingArgs, config, env)
     val args = evaluation.args
 
-    ExternalClient.from(config).use { client ->
+    val pluginKeys = buildPluginExecutionOrder(config, DEFAULT_PLUGIN_KEY)
+    if (pluginKeys.isEmpty()) {
+        System.err.println("[kapture] ERROR: No plugins configured. Update your config to include at least one plugin.")
+        exitProcess(1)
+    }
+
+    ExternalClient.from(config, pluginKeys).use { client ->
         // Check for custom git commands (subtask, review, merge, work, start)
         val customCommand = args.firstOrNull()?.lowercase()
         if (customCommand != null && customCommand in setOf("subtask", "review", "merge", "work", "start")) {
@@ -49,7 +56,7 @@ fun main(rawArgs: Array<String>) {
         // Handle status and help specially - append Kapture info to git's output
         if (customCommand == "status") {
             val gitExitCode = CommandExecutor.passthrough(listOf(realGit) + args, workDir = workDir, env = env)
-            appendKaptureStatus(config, realGit)
+            appendKaptureStatus(config, realGit, pluginKeys)
             exitProcess(gitExitCode)
         }
 
@@ -129,17 +136,34 @@ private fun runCustomGitCommand(
 
 private fun appendKaptureStatus(
     config: Config,
-    realGit: String
+    realGit: String,
+    pluginKeys: List<String>
 ) {
     println()
     println("Kapture:")
     println("  real git: $realGit")
-    val externalDescription = when (val ext = config.external) {
-        is Plugin.Http -> "REST API (${ext.baseUrl})"
-        is Cli -> "jira-cli (${ext.executable})"
+    println("  plugins:")
+    pluginKeys.forEach { key ->
+        val plugin = config.plugin(key)
+        val pluginDescription = when (plugin) {
+            null -> "<missing>"
+            is Plugin.Rest -> "REST (${plugin.baseUrl})"
+            is Plugin.Cli -> "CLI (paths=${plugin.paths.joinToString(" -> ")})"
+        }
+        println("    - $key: $pluginDescription")
     }
-    println("  external integration: $externalDescription")
     println("  tracking enabled: ${config.trackingEnabled}")
+}
+
+private fun buildPluginExecutionOrder(config: Config, preferredKey: String): List<String> {
+    val ordered = mutableListOf<String>()
+    if (config.plugin(preferredKey) != null) {
+        ordered.add(preferredKey)
+    }
+    config.plugins.keys
+        .filterNot { it == preferredKey }
+        .forEach { ordered.add(it) }
+    return ordered
 }
 
 private fun appendKaptureHelp() {

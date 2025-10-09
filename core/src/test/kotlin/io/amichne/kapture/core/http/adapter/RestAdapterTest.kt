@@ -27,16 +27,16 @@ class RestAdapterTest {
     @Test
     fun `adapter can be created with various auth configurations`() {
         val integrations = listOf(
-            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.None),
-            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.Bearer("token")),
-            Plugin.Http(baseUrl = "https://api.example.com", auth = Authentication.Basic("user", "pass")),
-            Plugin.Http(
+            Plugin.Rest(baseUrl = "https://api.example.com", auth = Authentication.None),
+            Plugin.Rest(baseUrl = "https://api.example.com", auth = Authentication.Bearer("token")),
+            Plugin.Rest(baseUrl = "https://api.example.com", auth = Authentication.Basic("user", "pass")),
+            Plugin.Rest(
                 baseUrl = "https://api.example.com", auth = Authentication.PersonalAccessToken("email", "token")
             )
         )
 
         integrations.forEach { integration ->
-            val adapter = HttpAdapter(integration, json)
+            val adapter = HttpAdapter(integration)
             assertNotNull(adapter)
             adapter.close()
         }
@@ -44,8 +44,8 @@ class RestAdapterTest {
 
     @Test
     fun `getTaskStatus returns NotFound for blank task ID`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com")
-        val adapter = HttpAdapter(integration, json)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration)
 
         val result = adapter.getTaskStatus("")
 
@@ -55,8 +55,8 @@ class RestAdapterTest {
 
     @Test
     fun `getTaskStatus returns NotFound for whitespace task ID`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com")
-        val adapter = HttpAdapter(integration, json)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration)
 
         val result = adapter.getTaskStatus("   ")
 
@@ -66,10 +66,10 @@ class RestAdapterTest {
 
     @Test
     fun `getTaskStatus handles non-existent host gracefully`() {
-        val integration = Plugin.Http(
+        val integration = Plugin.Rest(
             baseUrl = "https://this-host-does-not-exist-12345.invalid"
         )
-        val adapter = HttpAdapter(integration, json)
+        val adapter = HttpAdapter(integration)
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -80,10 +80,10 @@ class RestAdapterTest {
 
     @Test
     fun `trackSession does not throw on errors`() {
-        val integration = Plugin.Http(
+        val integration = Plugin.Rest(
             baseUrl = "https://this-host-does-not-exist-12345.invalid"
         )
-        val adapter = HttpAdapter(integration, json)
+        val adapter = HttpAdapter(integration)
 
         val snapshot = SessionSnapshot(
             branch = "main",
@@ -100,8 +100,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter handles base URL with trailing slash`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com/")
-        val adapter = HttpAdapter(integration, json)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com/")
+        val adapter = HttpAdapter(integration)
 
         assertNotNull(adapter)
         adapter.close()
@@ -109,8 +109,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter handles base URL without trailing slash`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com")
-        val adapter = HttpAdapter(integration, json)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration)
 
         assertNotNull(adapter)
         adapter.close()
@@ -118,8 +118,8 @@ class RestAdapterTest {
 
     @Test
     fun `adapter handles base URL with path`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com/api/v1")
-        val adapter = HttpAdapter(integration, json)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com/api/v1")
+        val adapter = HttpAdapter(integration)
 
         assertNotNull(adapter)
         adapter.close()
@@ -127,8 +127,8 @@ class RestAdapterTest {
 
     @Test
     fun `close releases resources and can be called multiple times`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com")
-        val adapter = HttpAdapter(integration, json)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration)
 
         adapter.close()
         adapter.close() // Should not throw
@@ -137,12 +137,10 @@ class RestAdapterTest {
     @Test
     fun `multiple adapters can be created and closed independently`() {
         val adapter1 = HttpAdapter(
-            Plugin.Http(baseUrl = "https://api1.example.com"),
-            json
+            Plugin.Rest(baseUrl = "https://api1.example.com"),
         )
         val adapter2 = HttpAdapter(
-            Plugin.Http(baseUrl = "https://api2.example.com"),
-            json
+            Plugin.Rest(baseUrl = "https://api2.example.com"),
         )
 
         adapter1.getTaskStatus("")
@@ -158,8 +156,8 @@ class RestAdapterTest {
             ignoreUnknownKeys = false
             prettyPrint = true
         }
-        val integration = Plugin.Http(baseUrl = "https://api.example.com")
-        val adapter = HttpAdapter(integration, customJson)
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com")
+        val adapter = HttpAdapter(integration, json = customJson)
 
         assertNotNull(adapter)
         adapter.close()
@@ -167,7 +165,7 @@ class RestAdapterTest {
 
     @Test
     fun `adapter uses default JSON when not specified`() {
-        val integration = Plugin.Http(baseUrl = "https://api.example.com")
+        val integration = Plugin.Rest(baseUrl = "https://api.example.com")
         val adapter = HttpAdapter(integration)
 
         assertNotNull(adapter)

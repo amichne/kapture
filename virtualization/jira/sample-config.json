@@ -1,6 +1,25 @@
 {
-  "externalBaseUrl": "http://localhost:8080",
-  "branchPattern": "^(?<task>[A-Z]+-\\d+)/[a-z0-9._-]+$",
+  "plugins": {
+    "jira-rest": {
+      "type": "REST",
+      "baseUrl": "http://localhost:8080",
+      "auth": {
+        "type": "bearer",
+        "token": "mock-token-not-required"
+      },
+      "provider": "jira"
+    },
+    "jira-cli": {
+      "type": "CLI",
+      "paths": ["jira"],
+      "environment": {
+        "JIRA_USER_EMAIL": "demo@example.com",
+        "JIRA_API_TOKEN": "mock-token"
+      },
+      "provider": "jira"
+    }
+  },
+  "branchPattern": "^(?<task>[A-Z]+-\d+)/[a-z0-9._-]+$",
   "enforcement": {
     "branchPolicy": "WARN",
     "statusCheck": "WARN"
@@ -29,14 +48,6 @@
     "optOutEnvVars": ["KAPTURE_OPTOUT"],
     "bypassCommands": ["help", "--version", "--exec-path"],
     "bypassArgsContains": ["--list-cmds"]
-  },
-  "external": {
-    "type": "rest",
-    "baseUrl": "http://localhost:8080",
-    "auth": {
-      "type": "bearer",
-      "token": "mock-token-not-required"
-    }
   },
   "trackingEnabled": false
 }

@@ -1,11 +1,8 @@
 package io.amichne.kapture.core.http
 
 import io.amichne.kapture.core.ExternalClient
-import io.amichne.kapture.core.config.Integration
 import io.amichne.kapture.core.model.config.Authentication
-import io.amichne.kapture.core.model.config.Cli
 import io.amichne.kapture.core.model.config.Plugin
-import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.InternalStatus
 import io.amichne.kapture.core.model.task.TaskSearchResult
@@ -15,6 +12,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.nio.file.Files
+import java.nio.file.Paths
 
 /**
  * Integration tests that verify ExternalClient works correctly with
@@ -24,7 +23,7 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient from Rest integration creates working client`() {
-        val integration = Plugin.Http(
+        val integration = Plugin.Rest(
             baseUrl = "https://api.example.com",
             auth = Authentication.None
         )
@@ -41,10 +40,10 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient from JiraCli integration creates working client`() {
-        val integration = Cli.Jira(
-            executable = "jira",
+        val integration = Plugin.Cli(
+            paths = listOf(existingJavaExecutable()),
             environment = mapOf("JIRA_API_TOKEN" to "test"),
-            timeoutSeconds = 30
+            timeoutMs = 30_000
         )
 
         val client = ExternalClient.from(integration)
@@ -59,7 +58,7 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient can track sessions with Rest integration`() {
-        val integration = Plugin.Http(
+        val integration = Plugin.Rest(
             baseUrl = "https://api.example.com",
             auth = Authentication.Bearer("test-token")
         )
@@ -80,9 +79,13 @@ class ExternalClientIntegrationTest {
 
     @Test
     fun `ExternalClient can track sessions with JiraCli integration`() {
-        val integration = Integration.Jira
+        val integration = Plugin.Cli(
+            paths = listOf(existingJavaExecutable()),
+            environment = emptyMap(),
+            timeoutMs = 30_000
+        )
 
-        val client = ExternalClient.from(integration.toPlugin())
+        val client = ExternalClient.from(integration)
         val snapshot = SessionSnapshot(
             branch = "TEST-123/feature",
             task = "TEST-123",
@@ -185,7 +188,7 @@ class ExternalClientIntegrationTest {
         )
 
         configs.forEach { auth ->
-            val integration = Plugin.Http(
+            val integration = Plugin.Rest(
                 baseUrl = "https://api.example.com",
                 auth = auth
             )
@@ -226,4 +229,12 @@ private fun TaskSearchResult.assertFoundRaw(expectedRaw: String, expectedInterna
         ?: throw AssertionError("Expected TaskSearchResult.Found but was $this")
     assertEquals(expectedRaw, found.status.raw)
     expectedInternal?.let { assertEquals(it, found.status.internal) }
+}
+
+private fun existingJavaExecutable(): String {
+    val javaHome = Paths.get(System.getProperty("java.home"))
+    val execName = if (System.getProperty("os.name").lowercase().contains("win")) "java.exe" else "java"
+    val candidate = javaHome.resolve("bin").resolve(execName)
+    require(Files.exists(candidate)) { "Could not locate Java executable at $candidate" }
+    return candidate.toAbsolutePath().toString()
 }

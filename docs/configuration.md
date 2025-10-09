@@ -38,7 +38,8 @@ binary. This guide highlights the fields that matter most and shows how to adapt
     "bypassCommands": ["help", "--version", "--exec-path"],
     "bypassArgsContains": ["--list-cmds"]
   },
-  "external": {
+  "plugins": {
+  "jira": {
     "type": "jiraCli",
     "environment": {
       "JIRA_USER_EMAIL": "dev@example.com",
@@ -137,7 +138,8 @@ Kapture normalises integrations through the `external` block.
 
 ```jsonc
 {
-  "external": {
+  "plugins": {
+  "jira": {
     "type": "jiraCli",
     "executable": "jira",
     "environment": {

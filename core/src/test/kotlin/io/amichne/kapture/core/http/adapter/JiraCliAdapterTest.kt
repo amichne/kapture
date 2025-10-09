@@ -1,10 +1,10 @@
 package io.amichne.kapture.core.http.adapter
 
 import io.amichne.kapture.core.adapter.internal.jira.JiraCliAdapter
+import io.amichne.kapture.core.adapter.internal.jira.JiraCliExecutable
 import io.amichne.kapture.core.command.CommandExecutor
-import io.amichne.kapture.core.config.Integration
 import io.amichne.kapture.core.model.command.CommandResult
-import io.amichne.kapture.core.model.config.Plugin.Companion.toPlugin
+import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.model.session.SessionSnapshot
 import io.amichne.kapture.core.model.task.TaskSearchResult
 import io.mockk.every
@@ -23,6 +23,29 @@ import org.junit.jupiter.api.Test
 class JiraCliAdapterTest {
 
     private val json = Json { ignoreUnknownKeys = true }
+    private val resolver: (Plugin.Cli) -> JiraCliExecutable = { plugin ->
+        JiraCliExecutable(plugin.paths.first())
+    }
+
+    private fun cliPlugin(
+        paths: List<String> = listOf("jira-cli"),
+        environment: Map<String, String> = emptyMap(),
+        timeoutMs: Int? = 60_000
+    ): Plugin.Cli = Plugin.Cli(
+        paths = paths,
+        environment = environment,
+        timeoutMs = timeoutMs
+    )
+
+    private fun createAdapter(
+        plugin: Plugin.Cli = cliPlugin(),
+        resolverOverride: (Plugin.Cli) -> JiraCliExecutable = resolver
+    ): JiraCliAdapter =
+        JiraCliAdapter(
+            plugin = plugin,
+            json = json,
+            executableResolver = resolverOverride
+        )
 
     @BeforeEach
     fun setUp() {
@@ -54,8 +77,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter()
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -64,8 +86,7 @@ class JiraCliAdapterTest {
 
     @Test
     fun `getTaskStatus returns NotFound for blank task ID`() {
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("")
 
@@ -75,8 +96,7 @@ class JiraCliAdapterTest {
 
     @Test
     fun `getTaskStatus returns NotFound for whitespace task ID`() {
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("   ")
 
@@ -94,8 +114,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 1, stdout = "", stderr = "Error: task not found")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("MISSING-999")
 
@@ -119,8 +138,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -145,8 +163,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -173,8 +190,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -201,8 +217,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = invalidResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -221,8 +236,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = malformedResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result = adapter.getTaskStatus("TEST-123")
 
@@ -250,8 +264,8 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin(executable = "/usr/local/bin/jira")
-        val adapter = JiraCliAdapter(integration, json)
+        val plugin = cliPlugin(paths = listOf("/usr/local/bin/jira"))
+        val adapter = createAdapter(plugin)
 
         adapter.getTaskStatus("PROJ-456")
 
@@ -279,8 +293,8 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin(executable = "")
-        val adapter = JiraCliAdapter(integration, json)
+        val plugin = cliPlugin(paths = listOf("", "jira-cli"))
+        val adapter = createAdapter(plugin) { JiraCliExecutable("jira-cli") }
 
         adapter.getTaskStatus("PROJ-456")
 
@@ -312,8 +326,7 @@ class JiraCliAdapterTest {
             "JIRA_API_TOKEN" to "test-token",
             "JIRA_SITE" to "https://example.atlassian.net"
         )
-        val integration = Integration.Jira.toPlugin(environment = environment)
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter(cliPlugin(environment = environment))
 
         adapter.getTaskStatus("TEST-123")
 
@@ -341,8 +354,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin(timeoutSeconds = 30)
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter(cliPlugin(timeoutMs = 30_000))
 
         adapter.getTaskStatus("TEST-123")
 
@@ -370,8 +382,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         adapter.getTaskStatus("MYPROJ-789")
 
@@ -381,8 +392,7 @@ class JiraCliAdapterTest {
 
     @Test
     fun `trackSession does nothing and logs debug message`() {
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val snapshot = SessionSnapshot(
             branch = "TEST-123/feature",
@@ -401,8 +411,7 @@ class JiraCliAdapterTest {
 
     @Test
     fun `close does not throw`() {
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         adapter.close()
 
@@ -428,8 +437,7 @@ class JiraCliAdapterTest {
             CommandResult(exitCode = 0, stdout = responses[callCount++], stderr = "")
         }
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         val result1 = adapter.getTaskStatus("TEST-1")
         val result2 = adapter.getTaskStatus("TEST-2")
@@ -462,8 +470,7 @@ class JiraCliAdapterTest {
             )
         } returns CommandResult(exitCode = 0, stdout = validResponse, stderr = "")
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         // Test various task formats
         adapter.getTaskStatus("PROJ-1")
@@ -497,8 +504,7 @@ class JiraCliAdapterTest {
             CommandResult(exitCode = 0, stdout = response, stderr = "")
         }
 
-        val integration = Integration.Jira.toPlugin()
-        val adapter = JiraCliAdapter(integration, json)
+        val adapter = createAdapter()
 
         statuses.forEach { expectedStatus ->
             val result = adapter.getTaskStatus("TEST-123")

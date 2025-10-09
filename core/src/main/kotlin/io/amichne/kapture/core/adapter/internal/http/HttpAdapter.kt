@@ -34,15 +34,18 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 
 internal class HttpAdapter(
-    private val integration: Plugin.Http,
+    private val integration: Plugin.Rest,
     private val json: Json = JsonProvider.defaultJson,
+    defaultTimeoutMs: Int = 60_000,
 ) : Adapter {
-    private val authenticator = RequestAuthenticator.Companion.from(integration.auth)
+    private val authenticator = RequestAuthenticator.from(integration.auth)
+    private val effectiveTimeoutMs = integration.timeoutMs?.toLong() ?: defaultTimeoutMs.toLong()
+
     private val httpClient: HttpClient = HttpClient(CIO) {
         install(ContentNegotiation.Plugin) { json(json) }
         install(HttpTimeout.Plugin) {
-            requestTimeoutMillis = integration.timeoutMs
-            connectTimeoutMillis = integration.timeoutMs
+            requestTimeoutMillis = effectiveTimeoutMs
+            connectTimeoutMillis = effectiveTimeoutMs
         }
         defaultRequest {
             header(HttpHeaders.Accept, ContentType.Application.Json)
@@ -72,7 +75,7 @@ internal class HttpAdapter(
                     )
                 )
             } catch (ex: ClientRequestException) {
-                if (ex.response.status == HttpStatusCode.Companion.NotFound) {
+                if (ex.response.status == HttpStatusCode.NotFound) {
                     TaskSearchResult.NotFound
                 } else {
                     Environment.debug { "Task lookup failed with ${ex.response.status}" }

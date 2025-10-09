@@ -1,7 +1,6 @@
 package io.amichne.kapture.core.config
 
 import io.amichne.kapture.core.model.config.Authentication
-import io.amichne.kapture.core.model.config.Cli
 import io.amichne.kapture.core.model.config.Config
 import io.amichne.kapture.core.model.config.Plugin
 import io.amichne.kapture.core.util.ConfigLoader
@@ -36,8 +35,7 @@ class ConfigTest {
 
         val config = ConfigLoader.load(configFile)
 
-        // Uses defaults for external
-        assertTrue(config.external is Cli)
+        assertTrue(config.plugins.isEmpty())
         assertTrue(config.trackingEnabled)
         assertEquals(1000L, config.sessionTrackingIntervalMs)
     }
@@ -46,8 +44,7 @@ class ConfigTest {
     fun `load falls back to defaults when file missing`() {
         val config = ConfigLoader.load(tempDir.resolve("missing.json"))
 
-        val external = config.external as Cli
-        assertEquals("jira-cli", external.executable)
+        assertTrue(config.plugins.isEmpty())
         assertTrue(config.trackingEnabled)
     }
 
@@ -58,20 +55,24 @@ class ConfigTest {
             configFile,
             """
                 {
-                  "external": {
-                    "type": "cli",
-                    "executable": "custom-jira",
-                    "environment": {},
-                    "timeoutSeconds": 30
+                  "plugins": {
+                    "jira": {
+                      "type": "CLI",
+                      "paths": ["custom-jira", "jira"],
+                      "timeoutMs": 30000
+                    }
                   }
                 }
             """.trimIndent()
         )
 
-        // Note: We can't actually set environment variables in tests,
-        // but we can verify the code doesn't crash when it's not set
         assertDoesNotThrow {
-            ConfigLoader.load(configFile)
+            val config = ConfigLoader.load(configFile)
+            val plugin = config.plugin("jira")
+            assertNotNull(plugin)
+            val cli = plugin as Plugin.Cli
+            assertEquals(listOf("custom-jira", "jira"), cli.paths)
+            assertEquals(30000, cli.timeoutMs)
         }
     }
 
@@ -86,26 +87,26 @@ class ConfigTest {
 
     @Test
     fun `config has default HTTP integration values`() {
-        val httpConfig = Plugin.Http(
+        val httpConfig = Plugin.Rest(
             baseUrl = "https://api.example.com",
             timeoutMs = 5000
         )
 
         assertEquals("https://api.example.com", httpConfig.baseUrl)
-        assertEquals(5000L, httpConfig.timeoutMs)
+        assertEquals(5000, httpConfig.timeoutMs)
         assertEquals(Authentication.None, httpConfig.auth)
     }
 
     @Test
     fun `config has default CLI integration values`() {
-        val cliConfig = Cli.Jira(
-            executable = "/usr/local/bin/custom-jira",
+        val cliConfig = Plugin.Cli(
+            paths = listOf("/usr/local/bin/custom-jira"),
             environment = mapOf("KEY" to "value"),
-            timeoutSeconds = 45
+            timeoutMs = 45_000
         )
 
-        assertEquals("/usr/local/bin/custom-jira", cliConfig.executable)
-        assertEquals(45L, cliConfig.timeoutSeconds)
+        assertEquals(listOf("/usr/local/bin/custom-jira"), cliConfig.paths)
+        assertEquals(45_000, cliConfig.timeoutMs)
         assertTrue(cliConfig.environment.containsKey("KEY"))
     }
 
@@ -225,8 +226,7 @@ class ConfigTest {
 
         // Should fall back to defaults
         assertNotNull(config)
-        val external = config.external as Cli
-        assertEquals("jira-cli", external.executable)
+        assertTrue(config.plugins.isEmpty())
     }
 
     @Test
@@ -277,9 +277,9 @@ class ConfigTest {
 
     @Test
     fun `HTTP config uses default authentication when not specified`() {
-        val httpConfig = Plugin.Http(baseUrl = "https://api.example.com")
+        val httpConfig = Plugin.Rest(baseUrl = "https://api.example.com")
 
         assertEquals(Authentication.None, httpConfig.auth)
-        assertEquals(10_000L, httpConfig.timeoutMs)
+        assertNull(httpConfig.timeoutMs)
     }
 }
